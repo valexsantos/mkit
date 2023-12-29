@@ -38,7 +38,7 @@ module MKIt
       srv.pod.each { |pod|
         name = pod.name.nil? ? "" : pod.name[0..11]
         pod_id = pod.pod_id.nil? ? "" : pod.pod_id[0..11]
-        resp << _format("     %-5s   %-15s   %-15s   %-15s   %-10s", [pod.id, pod_id, name, pod.ip, pod.status])
+        resp << _format("    %-5s   %-15s   %-15s   %-15s   %-10s", [pod.id, pod_id, name, pod.ip, pod.status])
       }
       resp
     end
