@@ -1,0 +1,12 @@
+[Unit]
+Description=Kids kube
+After=network-online.target
+
+[Service]
+EnvironmentFile=-/etc/mkit/mkitd_config.sh
+ExecStart=mkitd $OPTIONS
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+

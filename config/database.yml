@@ -1,0 +1,5 @@
+
+development:
+  adapter: "sqlite3"
+  database: "/tmp/development.sqlite"
+  pool: 1024

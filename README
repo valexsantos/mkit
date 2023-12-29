@@ -1,0 +1,3 @@
+./bin/mkitc POST services -F file=@samples/apps/postgres.yml
+./bin/mkitc GET services?verbose=true
+./bin/mkitc PUT services/1/start

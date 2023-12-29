@@ -1,0 +1,31 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'rubygems'
+
+class MKItClient
+
+  VERBS = %w{GET POST PUT DELETE}
+  def usage
+    puts 
+    puts  "usage: mkitc <verb> <path>"
+    puts  "  where <verb> is one of GET | POST | PUT | DELETE"
+    puts  "e.g."
+    puts  "  mkitc GET applications"
+    puts 
+  end
+
+  def run
+    if ARGV.size < 2 || VERBS.index(ARGV[0]).nil?
+      usage
+      exit 1
+    end
+
+    response = %x{curl -sL -X #{ARGV[0]} http://localhost:4567/#{ARGV[1]} #{ARGV[2]} #{ARGV[3]} #{ARGV[4]} #{ARGV[5]} #{ARGV[6]} #{ARGV[7]}}
+    puts response
+  end
+end
+
+client = MKItClient.new
+client.run
+
