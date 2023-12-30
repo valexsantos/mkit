@@ -3,10 +3,6 @@ require 'mkit/status'
 
 #
 # https://docs.docker.com/engine/reference/commandline/events
-#  https://stackoverflow.com/questions/690151/getting-output-of-system-calls-in-ruby
-#
-#  https://stackoverflow.com/questions/1154846/continuously-read-from-stdout-of-external-process-in-ruby
-#
 require 'mkit/app/helpers/docker_helper'
 module MKIt
   class DockerListener
