@@ -14,7 +14,7 @@ The daemon is responsible for HAProxy pods routing configuration. It also provid
 * Ruby
 * HAProxy
 * Docker
-* Linux
+* Linux (iproute2 package)
 
 ## Running
 
@@ -74,6 +74,23 @@ The service `postgres` is available on IP `10.210.198.10:5432`
 ## Configuration
 
 On startup, configuration files on `config` directory will be copied to `/etc/mkit`. HAProxy config dir and control commands are defined on `mkit_config.yml`
+
+You must configure `haproxy` to use config directory. e.g. on Ubuntu
+
+```
+# /etc/default/haproxy
+
+# Defaults file for HAProxy
+#
+# This is sourced by both, the initscript and the systemd unit file, so do not
+# treat it as a shell script fragment.
+
+# Change the config file location if needed
+CONFIG="/etc/haproxy/haproxy.d"
+
+# Add extra flags here, see haproxy(1) for a few options
+#EXTRAOPTS="-de -m 16"
+```
 
 ### Service
 
