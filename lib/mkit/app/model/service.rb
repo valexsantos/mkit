@@ -65,11 +65,6 @@ class Service < ActiveRecord::Base
     # create service network
     srv.deploy_network
 
-    # haproxy ports
-    config.ports&.each do |p|
-      port = ServicePort.create(service: srv, config: p)
-      srv.service_port << port
-    end
     # configure
     srv.configure(config)
     #
@@ -87,9 +82,21 @@ class Service < ActiveRecord::Base
     self.image = config.image if config.image != self.image
     self.command = config.command if config.command != self.command
 
-    self.max_replicas = config.resources.max_replicas unless config.resources.max_replicas.nil? || config.resources.max_replicas < 1
-    self.min_replicas = config.resources.min_replicas unless config.resources.min_replicas.nil? || config.resources.min_replicas < 1
+    unless config.resources.nil?
+      self.max_replicas = config.resources.max_replicas unless config.resources.max_replicas.nil? || config.resources.max_replicas < 1
+      self.min_replicas = config.resources.min_replicas unless config.resources.min_replicas.nil? || config.resources.min_replicas < 1
+    else
+      self.min_replicas = 1
+      self.max_replicas = 1
+    end
     self.max_replicas = self.min_replicas if self.min_replicas > self.max_replicas
+
+    # haproxy ports
+    self.service_port = []
+    config.ports&.each do |p|
+      port = ServicePort.create(service: self, config: p)
+      self.service_port << port
+    end
 
     # volumes
     self.volume = []
