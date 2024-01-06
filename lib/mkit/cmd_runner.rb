@@ -6,13 +6,16 @@ module MKIt
     def self.run(cmd)
       result=''
       begin
-        PTY.spawn( cmd ) do |stdout, stdin, pid|
-          begin
-            stdout.each { |line| result << line.strip! }
-          rescue Errno::EIO
-            # nothing
-          end
+        shell = PTY.spawn( cmd )
+        begin
+          shell[0].each { |line| result << line.strip! }
+        rescue Errno::EIO
+          # nothing
+        ensure
+          shell[0].close
         end
+        shell[1].close
+        Process.wait(shell[2])
       rescue PTY::ChildExited
         # nothing
       end

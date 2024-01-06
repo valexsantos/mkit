@@ -22,8 +22,8 @@ class ServicePort < ActiveRecord::Base
   #       load_bal:
   def parse_config(config)
     ports = config.split(':')
-    self.internal_port = ports[0]
-    self.external_port = ports[1]
+    self.external_port = ports[0]
+    self.internal_port = ports[1]
     self.mode = ports[2]
     self.load_bal = ports[3]
   end
