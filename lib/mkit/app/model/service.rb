@@ -115,6 +115,7 @@ class Service < ActiveRecord::Base
 
   def update!(yaml)
     config = yaml["service"]
+    raise MKIt::ServiceNameMismatch.new unless config.name == self.name
     self.version+=1
     self.configure(config)
 

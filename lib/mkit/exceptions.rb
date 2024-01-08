@@ -12,6 +12,11 @@ module MKIt
       super(409, message)
     end
   end
+  class ServiceNameMismatch < BaseException
+    def initialize(message = nil)
+      super(400, message)
+    end
+  end
   class ServiceNotFoundException < StandardError; end
   class PodNotFoundException     < StandardError; end
   class AppAlreadyDeployedException < StandardError; end

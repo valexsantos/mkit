@@ -41,6 +41,9 @@ class ServicesController < MKIt::Server
       srv.update!(yaml.to_o)
     end
     format_response(srv)
+  rescue MKIt::BaseException => e
+    MKItLogger.debug e
+    error e.error_code, e.message
   end
 
   # curl -X DELETE localhost:4567/services/1
