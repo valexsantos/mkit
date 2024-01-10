@@ -16,9 +16,16 @@ The daemon is responsible for HAProxy pods routing configuration. It also provid
 * Docker
 * Linux (iproute2 package)
 
+## Install
+
+This is a simple ruby gem, so to install run
+```
+# gem install mkit
+```
+
 ## Running
 
-The `daemon` requires `root` user, you can run it directly on the repository root...
+The `daemon` requires `root` user (due to `ip` and `haproxy`), you can run it directly on the repository root...
 
 ```
 # ./mkitd  --help
@@ -47,22 +54,23 @@ There's also samples on the samples dir, for daemontools and systemd.
 ### Accessing the API
 
 * Create new service
-  * `mkitc POST services -F "file=@samples/apps/rabbitmq.yml"`
+  * `mkitc create samples/apps/rabbitmq.yml`
 * Update service
-  * `mkitc PUT services/{id|service_name} -F "file=@samples/apps/rabbitmq.yml"`
-* Get services
-  * `mkitc GET services/{id|service_name}[?verbose=true]`
+  * `mkitc update samples/apps/rabbitmq.yml`
+* Get service
+  * `mkitc ps {id|service_name}`
 * Delete service
-  * `mkitc DELETE services/{id|service_name}`
+  * `mkitc rm {id|service_name}`
 * List services
-  * `mkitc GET services?verbose=true`
+  * `mkitc ps [-v (verbose)]`
 * Control service
-  * `mkitc PUT services/{id|service_name}/start`
-  * `mkitc PUT services/{id|service_name}/stop`
+  * `mkitc start {id|service_name}`
+  * `mkitc stop {id|service_name}`
 
 Example:
 
 ```
+$ mkitc ps postgres
 id      name                 addr             ports                      status
 4       postgres             10.210.198.10    tcp/5432                   RUNNING
   pods
@@ -98,7 +106,7 @@ CONFIG="/etc/haproxy/haproxy.d"
 service:
   name: rabbitmq # unique
   image: rabbitmq:3-management-alpine # image
-  network: bridge # docker network
+  network: bridge # docker network - it will be created if it does not exists
   ports:  # haproxy port mapping: <external_port>|<internal_port>|<tcp|http>|round_robin
     - 5672:5672:tcp:round_robin
     - 80:15672:http:round_robin
@@ -106,7 +114,7 @@ service:
     max_replicas: 1
     min_replicas: 1
   volumes:
-    - docker://mkit_rabbitmq_data:/var/lib/rabbitmq # a docker volume
+    - docker://mkit_rabbitmq_data:/var/lib/rabbitmq # a docker volume - it will be created if it does not exists
     - /var/log/rabbitmq/logs:/var/log/rabbitmq # a local volume
   environment:
     RABBITMQ_DEFAULT_USER: admin
