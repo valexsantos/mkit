@@ -16,21 +16,20 @@ class Pool < ActiveRecord::Base
     ips = range.split('-')
     next_ip = ips[0]
     next_ip = next_ip.to_i
-    lease.select(:status == MKIt::PoolStatus::IN_USE || :status == MKIt::PoolStatus::RESERVED).each { |l|
-      leased_ip = l.ip.split('.')[3]
-      leased_ip = leased_ip.to_i
-      if leased_ip >= next_ip
-        next_ip = leased_ip+1
+    ip_add = self.ip.split('.')
+    while next_ip <= ips[1].to_i + 1 do
+      if (lease.select{|l| l.ip == "#{ip_add[0]}.#{ip_add[1]}.#{ip_add[2]}.#{next_ip}"}.size == 0)
+        break
+      else
+        next_ip+=1
       end
-    }
+    end
+
     if next_ip > ips[1].to_i
       self.status = MKIt::PoolStatus::EXAUSTED
       self.save
       raise PoolExaustedException.new
     end
-
-    ip_add = self.ip.split('.')
-
     "#{ip_add[0]}.#{ip_add[1]}.#{ip_add[2]}.#{next_ip}"
   end
 
