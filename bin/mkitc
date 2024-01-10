@@ -12,7 +12,6 @@ require 'securerandom'
 class MKItClient
 
   def initialize
-    # client = NetX::HTTPUnix.new("unix://#{SOCKET_PATH}")
     @client = NetX::HTTPUnix.new("localhost",4567)
   end
 
@@ -130,14 +129,6 @@ class MKItClient
     when :delete
       req = Net::HTTP::Delete.new(uri)
     end
-
-    #request[:headers].each { |k, v|
-    #  req[k] = v
-    #}
-    # result = Net::HTTP.start("localhost", 4567, :use_ssl => false,
-    #          :verify_mode => OpenSSL::SSL::VERIFY_NONE) do |http|
-    #        http.request(req)
-    # end
     @client.request(req)
   end
 
