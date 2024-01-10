@@ -38,9 +38,9 @@ module MKIt
       MKIt::CmdRunner.run("docker network create #{network_name}")
     end
 
-    def inspect_network(network_name)
-      x = MKIt::CmdRunner.run("docker network inspect #{network_name}")
-      JSON.parse(x).first
+    def network_exists?(network_name)
+      x = MKIt::CmdRunner.run("docker network ls")
+      x.match(/\b#{network_name}\b/)
     end
 
     def dettach_network(network_id, instance_id)

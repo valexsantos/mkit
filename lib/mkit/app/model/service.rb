@@ -46,13 +46,6 @@ class Service < ActiveRecord::Base
       status: MKIt::Status::CREATING
     )
 
-    # docker network
-    if config.network.nil? || config.network.empty?
-      srv.pods_network="mkit"
-    else
-      srv.pods_network=config.network
-    end
-
     # reserve pool ip
     srv.lease = Pool.find_by_name(MKIt::Utils.me).reserve_for(srv)
 
@@ -90,6 +83,14 @@ class Service < ActiveRecord::Base
       self.max_replicas = 1
     end
     self.max_replicas = self.min_replicas if self.min_replicas > self.max_replicas
+
+    # docker network
+    if config.network.nil? || config.network.empty?
+      self.pods_network="mkit"
+    else
+      self.pods_network=config.network
+    end
+    self.create_pods_network
 
     # haproxy ports
     self.service_port = []
@@ -130,16 +131,13 @@ class Service < ActiveRecord::Base
   end
 
   def create_pods_network
-    netw = inspect_network(self.pods_network)
-    create_network(self.pods_network) if netw.nil?
+    create_network(self.pods_network) if !network_exists?(self.pods_network)
   end
 
   def deploy_network
     # create service interface...
     self.lease.confirm
     self.lease.up
-    # ...and pods network
-    self.create_pods_network
   end
 
   def add_volume(volume_config)
