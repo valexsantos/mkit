@@ -1,0 +1,19 @@
+#
+service:
+  name: rabbitmq
+  image: rabbitmq:3-management-alpine
+  network: bridge # docker network
+  ports:
+    - 5672:5672:tcp:round_robin
+    - 80:15672:http:round_robin
+  resources:
+    max_replicas: 1
+    min_replicas: 1
+  volumes:
+    - docker://mkit_rabbitmq_data:/var/lib/rabbitmq
+    - docker://mkit_rabbitmq_logs:/var/log/rabbitmq
+  environment:
+    RABBITMQ_DEFAULT_USER: admin
+    RABBITMQ_DEFAULT_PASS: admin
+    RABBITMQ_DEFAULT_VHOST: mkit
+

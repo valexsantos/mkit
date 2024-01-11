@@ -1,0 +1,22 @@
+#
+service:
+  name: postgres
+  network: bridge
+  image: "postgres:14"
+  ports:
+    - 5432:5432:tcp:round_robin
+  environment:
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    POSTGRES_DB: postgres
+  volumes:
+    - docker://postgresql_14_data:/var/lib/postgresql/data
+  restart: always
+  resources:
+    max_replicas: 1
+    min_replicas: 1
+  limits:
+    cpu: 1000m
+    ram: 1Gi
+
+

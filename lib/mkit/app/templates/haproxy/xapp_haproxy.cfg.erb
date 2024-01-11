@@ -1,0 +1,30 @@
+#
+# MKIt generated file
+#
+<% public_ports.each { |external_port|%>
+#
+# start <%=name%>-<%=external_port%>
+#
+frontend <%=name%>-<%=external_port%>-front
+  bind <%=lease.ip%>:<%=external_port%>
+  mode <%=ports_mode_by_external(external_port)%>
+  #
+  use_backend <%=name%>-<%=external_port%>-back
+
+backend <%=name%>-<%=external_port%>-back
+   mode <%=ports_mode_by_external(external_port)%>
+   #balance leastconn
+   balance  roundrobin
+ <%if ports_mode_by_external(external_port) == 'http'%>
+   option httpclose
+   option forwardfor
+   cookie JSESSIONID prefix
+ <%end%>
+<%ports_by_external(external_port).each { |port| %>
+   <%port.service.pod.each { | pod | %>
+   server <%=pod.name%>  <%=pod.ip%>:<%=port.internal_port%> <%if port.mode == 'http'%>cookie A<%end%>  check<%}%><%}%>
+# 
+# end of <%=name%>-<%=external_port%>
+#
+<%}%>
+

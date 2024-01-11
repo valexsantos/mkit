@@ -1,0 +1,1 @@
+docker run -d --name <%=name%>  <%service.service_config&.select{ |x| x.ctype == MKIt::CType::ENVIRONMENT.to_s }.each { |env|%><%=" -e #{env.key}=\"#{env.value}\""%><%}%> <%service.volume&.each { |vol|%><%=" -v \"#{vol.name}:#{vol.path}\""%><%}%>  --network <%=service.pods_network%> --dns <%=service.my_dns%> <%=service.image%> <%=service.command unless service.command.nil?%>

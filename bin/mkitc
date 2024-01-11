@@ -1,0 +1,158 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'rubygems'
+require 'optparse'
+require 'yaml'
+require 'net/http'
+require 'json'
+require 'net_http_unix'
+require 'securerandom'
+
+class MKItClient
+
+  def initialize
+    @client = NetX::HTTPUnix.new("localhost",4567)
+  end
+
+  def parse_args(args)
+    request = nil
+    case args[0]
+    when /^ps$/
+      if args.include?('-v')
+        params = {verbose: 'true'}
+        args.delete('-v')
+      else
+        params = {}
+      end
+      case args.size
+      when 1
+        #mkitc ps [-v] GET services[?verbose=true]
+        request = { verb: :get, uri: '/services', params: params }
+      when 2
+        #mkitc ps {id} GET services/{id}
+        id = args[1]
+        request = { verb: :get, uri: "/services/#{id}" }
+      else
+        raise 'invalid parameters'
+      end
+    when /^config:show$/
+      #mkitc config:show {id} => GET services/{id}/config
+      #TODO
+    when /^stop$/
+      #mkitc stop  {id} => PUT services/{id}/stop
+      case args.size
+      when 2
+        id = args[1]
+        request = { verb: :put, uri: "/services/#{id}/stop" }
+      else
+        raise 'invalid parameters'
+      end
+    when /^start$/
+      #mkitc start {id} => PUT services/{id}/start
+      case args.size
+      when 2
+        id = args[1]
+        request = { verb: :put, uri: "/services/#{id}/start" }
+      else
+        raise 'invalid parameters'
+      end
+    when /^rm$/
+      #mkitc rm {id} => DELETE services/{id}
+      case args.size
+      when 2
+        id = args[1]
+        request = { verb: :delete, uri: "/services/#{id}" }
+      else
+        raise 'invalid parameters'
+      end
+    when /^create$/
+      #mkitc create service.yaml => POST services service.yaml
+      case args.size
+      when 2
+        file = args[1]
+        request = { verb: :post, uri: "/services", file: file }
+      else
+        raise 'invalid parameters'
+      end
+    when /^update$/
+      #mkitc update service.yaml => PUT services/{id} service.yaml
+      case args.size
+      when 2
+        file = args[1]
+        yaml = YAML.load_file(file)
+        if yaml["service"].nil?
+          raise 'invalid configuration file'
+        else
+          id = yaml["service"]["name"]
+          request = { verb: :put, uri: "/services/#{id}", file: file }
+        end
+      else
+        raise 'invalid parameters'
+      end
+    else
+      raise "Usage: invalid parameters"
+    end
+    request
+  end
+
+  def doIt(args)
+    operation = parse_args(args)
+    puts request(operation).body
+  end
+
+  def request(request)
+    req = nil
+    uri = request[:uri]
+    unless request[:params].nil? || request[:params].empty?
+      uri = uri + '?' + request[:params].map{|k,v| "#{k}=#{v}"}.join('&')
+    end
+    case request[:verb]
+    when :post
+      req = Net::HTTP::Post.new(uri)
+      unless request[:file].nil?
+        (body, boundary) = attach(request[:file])
+        req.body = body
+        req["Content-Type"] = "multipart/form-data, boundary=#{boundary}"
+      end
+    when :put
+      req = Net::HTTP::Put.new(uri)
+      unless request[:file].nil?
+        (body, boundary) = attach(request[:file])
+        req.body = body
+        req["Content-Type"] = "multipart/form-data, boundary=#{boundary}"
+      end
+    when :patch
+      req = Net::HTTP::Patch.new(uri)
+    when :get
+      req = Net::HTTP::Get.new(uri)
+    when :delete
+      req = Net::HTTP::Delete.new(uri)
+    end
+    @client.request(req)
+  end
+
+  def attach(file)
+    boundary=SecureRandom.alphanumeric
+    body = []
+    body << "--#{boundary}\r\n"
+    body << "Content-Disposition: form-data; name=file; filename='#{File.basename(file)}'\r\n"
+    body << "Content-Type: text/plain\r\n"
+    body << "\r\n"
+    body << File.read(file)
+    body << "\r\n--#{boundary}--\r\n"
+    [ body.join, boundary]
+  end
+end
+
+#
+# go
+#
+client = MKItClient.new
+client.doIt(ARGV.dup)
+#
+# if ARGV.any?
+# parse args
+#  host, socket, config file
+# end
+
