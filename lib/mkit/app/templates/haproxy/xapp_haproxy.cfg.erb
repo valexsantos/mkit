@@ -1,30 +1,27 @@
 #
 # MKIt generated file
 #
-<% public_ports.each { |external_port|%>
+<% service_port.each { |port|%>
 #
-# start <%=name%>-<%=external_port%>
+# start <%=name%>-<%=port.external_port%>
 #
-frontend <%=name%>-<%=external_port%>-front
-  bind <%=lease.ip%>:<%=external_port%>
-  mode <%=ports_mode_by_external(external_port)%>
+frontend <%=name%>-<%=port.external_port%>-front
+  bind <%=lease.ip%>:<%=port.external_port%>
+  mode <%=port.mode%>
   #
-  use_backend <%=name%>-<%=external_port%>-back
+  use_backend <%=name%>-<%=port.external_port%>-back
 
-backend <%=name%>-<%=external_port%>-back
-   mode <%=ports_mode_by_external(external_port)%>
-   #balance leastconn
-   balance  roundrobin
- <%if ports_mode_by_external(external_port) == 'http'%>
-   option httpclose
-   option forwardfor
-   cookie JSESSIONID prefix
- <%end%>
-<%ports_by_external(external_port).each { |port| %>
-   <%port.service.pod.each { | pod | %>
-   server <%=pod.name%>  <%=pod.ip%>:<%=port.internal_port%> <%if port.mode == 'http'%>cookie A<%end%>  check<%}%><%}%>
-# 
-# end of <%=name%>-<%=external_port%>
+backend <%=name%>-<%=port.external_port%>-back
+  mode <%=port.mode%>
+  balance <%=port.load_balance%>
+ <%if port.mode == 'http'%>
+  option httpclose
+  option forwardfor
+  cookie JSESSIONID prefix
+ <%end%><%port.service.pod.each { | pod | %>
+  server <%=pod.name%>  <%=pod.ip%><%unless port.internal_port.nil? || port.internal_port.empty? then%><%=":#{port.internal_port}"%> <%if port.mode == 'http'%>cookie A<%end%> check<%end%>
+  <%}%>
+#
+# end of <%=name%>-<%=port.external_port%>
 #
 <%}%>
-

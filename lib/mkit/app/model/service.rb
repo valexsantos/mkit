@@ -9,11 +9,7 @@ require 'mkit/status'
 require 'mkit/utils'
 require 'mkit/ctypes'
 require 'mkit/app/model/pool'
-require 'mkit/app/model/service'
-require 'mkit/app/model/pod'
 require 'mkit/app/model/dns_host'
-require 'mkit/app/helpers/erb_helper'
-require 'mkit/app/helpers/docker_helper'
 require 'mkit/app/helpers/haproxy'
 
 #
@@ -199,19 +195,6 @@ class Service < ActiveRecord::Base
   #
   # ha proxy configs & template
   #
-  def public_ports
-    self.service_port.each.map{|p| p.external_port}.uniq
-  end
-
-  def ports_by_external(external_port)
-    self.service_port.where('external_port = ?', external_port)
-  end
-
-  def ports_mode_by_external(external_port)
-    ports = self.service_port.where('external_port = ?', external_port).first
-    ports.mode if ports
-  end
-
   def update_proxy
     MkitJob.publish(topic: :update_proxy_config, application_id: self.id, data: proxy_config)
   end

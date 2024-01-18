@@ -17,6 +17,11 @@ module MKIt
       super(400, message)
     end
   end
+  class InvalidPortsConfiguration < BaseException
+    def initialize(message = nil)
+      super(400, message)
+    end
+  end
   class ServiceNotFoundException < StandardError; end
   class PodNotFoundException     < StandardError; end
   class AppAlreadyDeployedException < StandardError; end
