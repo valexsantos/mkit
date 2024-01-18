@@ -110,6 +110,9 @@ module MKIt
       srv.deploy_network
       srv.update_status!
     }
+    # daemontools would eventually start haproxy; systemd does not.
+    # so, restart here.
+    MKIt::HAProxy.restart
   end
 
   def self.startup(options: {})

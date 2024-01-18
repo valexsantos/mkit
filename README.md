@@ -107,7 +107,11 @@ service:
   name: rabbitmq # unique
   image: rabbitmq:3-management-alpine # image
   network: bridge # docker network - it will be created if it does not exists
-  ports:  # haproxy port mapping: <external_port>|<internal_port>|<tcp|http>|round_robin
+  ports:  # haproxy port mapping
+          #   <external_port>:[internal_port]:<tcp|http>:[round_robin (default)|leastconn]
+          # to define a range on `external_port`, leave `internal_port` blank
+          #   - 5000-5100::tcp:round_robin
+          # range on `internal_port` is not supported 
     - 5672:5672:tcp:round_robin
     - 80:15672:http:round_robin
   resources:
