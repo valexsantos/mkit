@@ -34,37 +34,39 @@ class Service < ActiveRecord::Base
     config = yaml["service"]
     raise MKIt::ServiceAlreadyExists.new unless Service.find_by_name(config.name).nil?
 
-    srv = Service.new(
-      name: config.name,
-      version: 1,
-      image: config.image,
-      command: config.command,
-      status: MKIt::Status::CREATING
-    )
+    ActiveRecord::Base.transaction do
+      srv = Service.new(
+        name: config.name,
+        version: 1,
+        image: config.image,
+        command: config.command,
+        status: MKIt::Status::CREATING
+      )
 
-    # reserve pool ip
-    srv.lease = Pool.find_by_name(MKIt::Utils.me).reserve_for(srv)
+      # reserve pool ip
+      srv.lease = Pool.find_by_name(MKIt::Utils.me).reserve_for(srv)
 
-    srv.dns_host = DnsHost.new(
-      service: srv,
-      name: srv.name,
-      ip: srv.lease.ip
-    )
+      srv.dns_host = DnsHost.new(
+        service: srv,
+        name: srv.name,
+        ip: srv.lease.ip
+      )
 
-    # create service network
-    srv.deploy_network
+      # create service network
+      srv.deploy_network
 
-    # configure
-    srv.configure(config)
-    #
-    srv.status = MKIt::Status::CREATED
-    srv.save
-    data = { service_id: srv.id, version: srv.version }
-    # create pod
-    (1..srv.min_replicas).each { |i|
-      MkitJob.publish(topic: :create_pod_saga, service_id: srv.id, data: data)
-    }
-    srv
+      # configure
+      srv.configure(config)
+      #
+      srv.status = MKIt::Status::CREATED
+      srv.save!
+      data = { service_id: srv.id, version: srv.version }
+      # create pod
+      (1..srv.min_replicas).each { |i|
+        MkitJob.publish(topic: :create_pod_saga, service_id: srv.id, data: data)
+      }
+      srv
+    end
   end
 
   def configure(config)
@@ -111,19 +113,21 @@ class Service < ActiveRecord::Base
   end
 
   def update!(yaml)
-    config = yaml["service"]
-    raise MKIt::ServiceNameMismatch.new unless config.name == self.name
-    self.version+=1
-    self.configure(config)
+    ActiveRecord::Base.transaction do
+      config = yaml["service"]
+      raise MKIt::ServiceNameMismatch.new unless config.name == self.name
+      self.version+=1
+      self.configure(config)
 
-    # start new pod, destroy old pod...
-    self.pod.each { |pod| MkitJob.publish(topic: :destroy_pod, pod_id: pod.id, data: {}) }
-    # create pod
-    data = { service_id: self.id, version: self.version }
-    (1..self.min_replicas).each { |i|
-      MkitJob.publish(topic: :create_pod_saga, service_id: self.id, data: data)
-    }
-    self.save
+      # start new pod, destroy old pod...
+      self.pod.each { |pod| MkitJob.publish(topic: :destroy_pod, pod_id: pod.id, data: {}) }
+      # create pod
+      data = { service_id: self.id, version: self.version }
+      (1..self.min_replicas).each { |i|
+        MkitJob.publish(topic: :create_pod_saga, service_id: self.id, data: data)
+      }
+      self.save
+    end
   end
 
   def create_pods_network

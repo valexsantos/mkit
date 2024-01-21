@@ -14,7 +14,7 @@ module MKIt
 
     error do |e|
       MKItLogger.debug e
-      error 500, e.message
+      error 500, "Internal server error: #{e.message}"
     end
   end
 end
