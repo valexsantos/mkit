@@ -1,7 +1,6 @@
 ENV["SINATRA_ENV"] ||= "development"
 
 require 'rubygems'
-require 'sinatra/activerecord/rake'
 require 'standalone_migrations'
 require 'rubygems/package_task'
 require 'rubygems/specification'
@@ -11,6 +10,7 @@ require 'fileutils'
 require 'bundler/setup'
 require 'dry-container'
 require 'sinatra/activerecord'
+require 'sinatra/activerecord/rake'
 require 'rubydns'
 require_relative 'lib/mkit/version.rb'
 require_relative 'lib/mkit/utils'

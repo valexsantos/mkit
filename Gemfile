@@ -4,10 +4,12 @@ source "https://rubygems.org"
 
 gem 'net-ping'
 gem 'dry-container'
+gem 'text-table'
+gem 'rake'
 gem 'sqlite3'
 gem 'standalone_migrations'
 
-gem 'sinatra-activerecord', :require => 'sinatra/activerecord'
+gem 'sinatra-activerecord'
 gem 'rack', '>= 2.0.6'
 gem 'pry'
 gem 'rubydns'

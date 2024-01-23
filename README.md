@@ -71,11 +71,11 @@ Example:
 
 ```
 $ mkitc ps postgres
-id      name                 addr             ports                      status
-4       postgres             10.210.198.10    tcp/5432                   RUNNING
-  pods
-    id      pod_id            pod_name          pod_ip            status
-    19      4ce31a007211      5d148a16f3aa      172.17.0.2        RUNNING
++----+----------+---------------+----------+--------------+---------+
+| id |   name   |     addr      |  ports   |     pods     | status  |
++----+----------+---------------+----------+--------------+---------+
+| 2  | postgres | 10.210.198.10 | tcp/4532 | 49b5e4c8f247 | RUNNING |
++----+----------+---------------+----------+--------------+---------+
 ```
 The service `postgres` is available on IP `10.210.198.10:5432`
 
