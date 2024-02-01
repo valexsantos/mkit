@@ -17,6 +17,7 @@ require_relative 'mkit/docker_listener'
 require 'mkit/app/helpers/haproxy'
 require 'mkit/app/controllers/services_controller'
 require 'mkit/app/controllers/mkitjobs_controller'
+require 'mkit/app/controllers/mkit_controller'
 require 'mkit/mkit_interface'
 require 'mkit/mkit_dns'
 require 'mkit/job_manager'
@@ -112,6 +113,7 @@ module MKIt
     }
     # daemontools would eventually start haproxy; systemd does not.
     # so, restart here.
+    MKItLogger.debug "restarting proxy..."
     MKIt::HAProxy.restart
   end
 
@@ -152,8 +154,6 @@ module MKIt
     #
     self.restore_operation
     #
-    MKItLogger.debug "restarting proxy..."
-    MKIt::HAProxy.restart
     MKItLogger.info "MKIt is up and running!"
   end
 

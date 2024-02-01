@@ -77,4 +77,11 @@ class ServicesController < MKIt::Server
     MkitJob.publish(topic: :stop_service, service_id: srv.id)
     format_response(srv)
   end
+
+  put '/services/:id/restart' do
+    srv = find_by_id_or_name
+    MkitJob.publish(topic: :stop_service, service_id: srv.id)
+    MkitJob.publish(topic: :start_service, service_id: srv.id)
+    format_response(srv)
+  end
 end

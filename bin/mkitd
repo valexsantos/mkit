@@ -18,6 +18,7 @@ def up
   use Rack::MethodOverride
   use ServicesController
   use MkitJobsController
+  use MkitController
 
   # sinatra::base ignores in parameters
   # set it here or via configure...
