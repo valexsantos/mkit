@@ -1,5 +1,6 @@
-class Setup < ActiveRecord::Migration[5.1]
+# frozen_string_literal: true
 
+class Setup < ActiveRecord::Migration[5.1]
   def up
     create_table :services do |t|
       t.string :name
@@ -16,7 +17,7 @@ class Setup < ActiveRecord::Migration[5.1]
       t.timestamp :updated_at
     end
 
-    add_index "services", ["name"], :name => "services_name_id"
+    add_index 'services', ['name'], name: 'services_name_id'
 
     create_table :service_configs do |t|
       t.string :service_id
@@ -82,10 +83,10 @@ class Setup < ActiveRecord::Migration[5.1]
     end
 
     # mkit configs
-    # e.g. 
+    # e.g.
     #   default network pool
     #   rabbitmq address
-    #   haproxy 
+    #   haproxy
     #     config.d path
     #     reload command - pq quero usar o daemontools
     #     stop
@@ -102,4 +103,3 @@ class Setup < ActiveRecord::Migration[5.1]
     drop_table :services
   end
 end
-

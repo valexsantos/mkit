@@ -1,5 +1,6 @@
-class PodsController < MKIt::Server
+# frozen_string_literal: true
 
+class PodsController < MKIt::Server
   get '/services/:service_id/pods' do
     "Not implemented\n"
   end
@@ -17,14 +18,12 @@ class PodsController < MKIt::Server
   end
 
   post '/services/:service_id/pods' do
-    xx = "no file"
+    xx = 'no file'
     if params[:file]
       tempfile = params[:file][:tempfile]
-      xx= YAML.load(tempfile.read)
+      xx = YAML.safe_load(tempfile.read)
       puts xx
     end
     JSON.pretty_generate(JSON.parse(xx.to_json))
   end
-
 end
-

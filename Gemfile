@@ -1,21 +1,23 @@
-source "https://rubygems.org"
+# frozen_string_literal: true
 
-#ruby '2.6.10'
+source 'https://rubygems.org'
 
-gem 'net-ping'
+# ruby '3.0.2'
+
 gem 'dry-container'
+gem 'net-ping'
+gem 'rake'
 gem 'sqlite3'
 gem 'standalone_migrations'
+gem 'text-table'
 
-gem 'sinatra-activerecord', :require => 'sinatra/activerecord'
-gem 'rack', '>= 2.0.6'
-gem 'pry'
-gem 'rubydns'
 gem 'async-dns'
+gem 'pry'
+gem 'rack', '>= 2.0.6'
+gem 'rubydns'
+gem 'sinatra-activerecord'
 # rest http server
+gem 'net_http_unix' # socket client
 gem 'sinatra'
 gem 'thin' # socket server
-gem 'net_http_unix' # socket client
-#gem 'puma'
-
-
+# gem 'puma'

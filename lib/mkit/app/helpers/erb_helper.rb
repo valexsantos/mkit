@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'mkit/utils'
 
 module MKIt
@@ -6,9 +8,9 @@ module MKIt
       root = MKIt::Utils.root
       File.read("#{root}/lib/mkit/app/templates/#{template}.erb")
     end
-  
+
     def parse_template(template, data = {})
-       ERB.new(read_template(template)).result_with_hash(data)
+      ERB.new(read_template(template)).result_with_hash(data)
     end
 
     def parse_model(template)

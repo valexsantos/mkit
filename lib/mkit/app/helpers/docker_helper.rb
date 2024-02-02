@@ -1,8 +1,9 @@
+# frozen_string_literal: true
+
 require 'mkit/cmd_runner'
 
 module MKIt
   module DockerHelper
-
     # from ERB template
     def create_instance(cmd)
       MKIt::CmdRunner.run(cmd)
@@ -22,7 +23,7 @@ module MKIt
 
     def inspect_instance(instance_id)
       # this one does not work on ubunto MKIt::CmdRunner.run("docker inspect #{instance_id}")
-      x = %x{docker inspect #{instance_id}}
+      x = `docker inspect #{instance_id}`
       JSON.parse(x).first
     end
 
@@ -39,7 +40,7 @@ module MKIt
     end
 
     def network_exists?(network_name)
-      x = MKIt::CmdRunner.run("docker network ls")
+      x = MKIt::CmdRunner.run('docker network ls')
       x.match(/\b#{network_name}\b/)
     end
 

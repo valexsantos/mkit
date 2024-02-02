@@ -10,23 +10,21 @@ def up
   require 'sinatra/base'
   require 'mkit'
   # defaults
-  PARAMS_CONFIG[:bind] ||= "localhost"
+  PARAMS_CONFIG[:bind] ||= 'localhost'
   PARAMS_CONFIG[:port] ||= 4567
-  #
   MKIt.startup(options: PARAMS_CONFIG)
 
   use Rack::MethodOverride
   use ServicesController
   use MkitJobsController
+  use MkitController
 
   # sinatra::base ignores in parameters
   # set it here or via configure...
-  Sinatra::Application.run!({port: PARAMS_CONFIG[:port], bind: PARAMS_CONFIG[:bind] })
+  Sinatra::Application.run!({ port: PARAMS_CONFIG[:port], bind: PARAMS_CONFIG[:bind] })
   # MKIt::Server.run
 end
 
-
-#
 if ARGV.any?
   require 'optparse'
   parser = OptionParser.new do |op|
@@ -52,4 +50,3 @@ if ARGV.any?
 end
 
 up
-

@@ -104,6 +104,7 @@ GEM
       nokogiri (~> 1.14)
       railties (>= 6.0.0, < 7.1.0)
       rake (>= 10.0)
+    text-table (1.2.4)
     thin (1.8.2)
       daemons (~> 1.0, >= 1.0.9)
       eventmachine (~> 1.0, >= 1.0.4)
@@ -126,11 +127,13 @@ DEPENDENCIES
   net_http_unix
   pry
   rack (>= 2.0.6)
+  rake
   rubydns
   sinatra
   sinatra-activerecord
   sqlite3
   standalone_migrations
+  text-table
   thin
 
 BUNDLED WITH

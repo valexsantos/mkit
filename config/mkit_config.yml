@@ -4,11 +4,11 @@ mkit:
   haproxy:
     config_dir: /etc/haproxy/haproxy.d
     ctrl:
-      start:   /etc/init.d/haproxy start
-      stop:    /etc/init.d/haproxy stop
-      reload:  /etc/init.d/haproxy restart
-      restart: /etc/init.d/haproxy restart
-      status:  /etc/init.d/haproxy status
+      start:   systemctl start   haproxy
+      stop:    systemctl stop    haproxy
+      reload:  systemctl reload  haproxy
+      restart: systemctl restart haproxy
+      status:  systemctl status  haproxy
       bin: /usr/sbin/haproxy
   database:
     env: development
