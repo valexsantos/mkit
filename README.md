@@ -53,19 +53,27 @@ There's also samples on the samples dir, for daemontools and systemd.
 
 ### Accessing the API
 
-* Create new service
-  * `mkitc create samples/apps/rabbitmq.yml`
-* Update service
-  * `mkitc update samples/apps/rabbitmq.yml`
-* Get service
-  * `mkitc ps {id|service_name}`
-* Delete service
-  * `mkitc rm {id|service_name}`
-* List services
-  * `mkitc ps [-v (verbose)]`
-* Control service
-  * `mkitc start {id|service_name}`
-  * `mkitc stop {id|service_name}`
+A client is provided to interact with mkit server.
+
+```
+Usage: mkitc <command> [options]
+
+Micro k8s on Ruby - a simple tool to mimic a (very) minimalistic k8 cluster
+
+Commands:
+
+ps         show services status (alias for status)
+status     show services status
+start      start service
+stop       stop service
+restart    restart service
+create     create new service
+update     update service
+version    prints mkit server version
+proxy      haproxy status and control
+
+Run 'mkitc help <command>' for specific command information.
+```
 
 Example:
 
@@ -81,7 +89,7 @@ The service `postgres` is available on IP `10.210.198.10:5432`
 
 ## Configuration
 
-On startup, configuration files on `config` directory will be copied to `/etc/mkit`. HAProxy config dir and control commands are defined on `mkit_config.yml`
+On startup, configuration files on `config` directory will be copied to `/etc/mkit`. HAProxy config directory and control commands are defined on `mkit_config.yml`
 
 You must configure `haproxy` to use config directory. e.g. on Ubuntu
 
@@ -115,8 +123,8 @@ service:
     - 5672:5672:tcp:round_robin
     - 80:15672:http:round_robin
   resources:
-    max_replicas: 1
-    min_replicas: 1
+    min_replicas: 1 # default value
+    max_replicas: 1 # default value
   volumes:
     - docker://mkit_rabbitmq_data:/var/lib/rabbitmq # a docker volume - it will be created if it does not exists
     - /var/log/rabbitmq/logs:/var/log/rabbitmq # a local volume

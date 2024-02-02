@@ -79,7 +79,7 @@ class MKItClient
         args: [
           { name: 'file', mandatory: true }
         ],
-        help: 'create service',
+        help: 'create new service',
         usage: ['<service.yaml>'],
         request: { verb: :post, uri: '/services'},
       },
@@ -121,7 +121,7 @@ class MKItClient
             help: 'proxy service status',
           },
         ],
-        help: 'proxy status and control',
+        help: 'haproxy status and control',
         usage: ['<start|stop|restart|status>'],
       },
     ]
@@ -144,7 +144,7 @@ class MKItClient
        msg += "%-10s %s\n" % [c[:cmd], c[:help]]
      }
      msg += "\n"
-     msg += "Run 'mkitc help command' for specific command information.\n\n"
+     msg += "Run 'mkitc help <command>' for specific command information.\n\n"
    else
      msg += "\nUsage: mkitc %s %s\n\n" % [my_cmd[:cmd], my_cmd[:usage].nil? ? '' : my_cmd[:usage].join(' ')]
      msg += "%s\n" % [my_cmd[:help]]
