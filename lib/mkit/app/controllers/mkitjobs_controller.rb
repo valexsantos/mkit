@@ -1,7 +1,8 @@
+# frozen_string_literal: true
+
 require 'mkit/app/model/mkit_job'
 
 class MkitJobsController < MKIt::Server
-
   # curl localhost:4567/mkitjobs
   get '/mkitjobs' do
     JSON.pretty_generate(JSON.parse(MkitJob.all.to_json))
@@ -24,14 +25,12 @@ class MkitJobsController < MKIt::Server
   end
 
   post '/mkitjobs' do
-    xx = "no file"
+    xx = 'no file'
     if params[:file]
       tempfile = params[:file][:tempfile]
-      xx= YAML.load(tempfile.read)
+      xx = YAML.safe_load(tempfile.read)
       puts xx
     end
     JSON.pretty_generate(JSON.parse(xx.to_json))
   end
-
 end
-

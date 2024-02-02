@@ -55,6 +55,8 @@ There's also samples on the samples dir, for daemontools and systemd.
 
 A client is provided to interact with mkit server.
 
+Run `mkitc help` to list current supported commands.
+
 ```
 Usage: mkitc <command> [options]
 
@@ -69,6 +71,7 @@ stop       stop service
 restart    restart service
 create     create new service
 update     update service
+rm         remove service
 version    prints mkit server version
 proxy      haproxy status and control
 

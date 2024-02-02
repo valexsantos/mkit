@@ -1,5 +1,6 @@
-class MkitJobs < ActiveRecord::Migration[5.1]
+# frozen_string_literal: true
 
+class MkitJobs < ActiveRecord::Migration[5.1]
   def up
     create_table :mkit_jobs do |t|
       t.string :topic
@@ -12,6 +13,4 @@ class MkitJobs < ActiveRecord::Migration[5.1]
       t.timestamp :updated_at
     end
   end
-
 end
-
