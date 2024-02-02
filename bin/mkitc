@@ -10,6 +10,14 @@ require 'net_http_unix'
 require 'securerandom'
 require 'erb'
 
+class InvalidParametersException < Exception
+  attr_reader :command
+  def initialize(cause, command = nil)
+    super(cause)
+    @command = command
+  end
+end
+
 class MKItClient
 
   def initialize
@@ -24,62 +32,69 @@ class MKItClient
       {
         cmd: 'ps',
         args: [
-          { name: 'id', mandatory: false, path: '/<%=id%>' }
+          { name: 'id', mandatory: false, uri: '/<%=id%>' }
         ],
-        help: 'show services status [service_id_or_name]',
-        request: { verb: :get, uri: '/services', params: [:id]},
+        help: 'show services status (alias for status)',
+        usage: ['[service_id_or_name]'],
+        request: { verb: :get, uri: '/services'},
       },
       {
         cmd: 'status',
         args: [
-          { name: 'id', mandatory: false, path: '/<%=id%>' }
+          { name: 'id', mandatory: false, uri: '/<%=id%>' }
         ],
-        help: 'show services status [service_id_or_name]',
-        request: { verb: :get, uri: '/services', params: [:id]},
+        help: 'show services status',
+        usage: ['[service_id_or_name]'],
+        request: { verb: :get, uri: '/services'},
       },
       {
         cmd: 'start',
         args: [
           { name: 'id', mandatory: true }
         ],
-        help: 'start service <service_id|service_name>',
-        request: { verb: :put, uri: '/services/<%=id%>/start', params: [:id]},
+        help: 'start service',
+        usage: ['<service_id_or_name>'],
+        request: { verb: :put, uri: '/services/<%=id%>/start'},
       },
       {
         cmd: 'stop',
         args: [
           { name: 'id', mandatory: true }
         ],
-        help: 'stop service <service_id|service_name>',
-        request: { verb: :put, uri: '/services/<%=id%>/stop', params: [:id]},
+        help: 'stop service',
+        usage: ['<service_id_or_name>'],
+        request: { verb: :put, uri: '/services/<%=id%>/stop'},
       },
       {
         cmd: 'restart',
         args: [
           { name: 'id', mandatory: true }
         ],
-        help: 'restart service <service_id|service_name>',
-        request: { verb: :put, uri: '/services/<%=id%>/restart', params: [:id]},
+        help: 'restart service',
+        usage: ['<service_id_or_name>'],
+        request: { verb: :put, uri: '/services/<%=id%>/restart'},
       },
       {
         cmd: 'create',
         args: [
           { name: 'file', mandatory: true }
         ],
-        help: 'create service <service.yaml>',
-        request: { verb: :post, uri: '/services', file: [:file]},
+        help: 'create service',
+        usage: ['<service.yaml>'],
+        request: { verb: :post, uri: '/services'},
       },
       {
         cmd: 'update',
         args: [
           { name: 'file', mandatory: true }
         ],
-        help: 'update service <service.yaml>',
-        request: { verb: :put, uri: '/services', file: [:file]},
+        help: 'update service',
+        usage: ['<service.yaml>'],
+        request: { verb: :put, uri: '/services/<%=id%>'},
       },
       {
         cmd: 'version',
-        help: 'prints mkit version',
+        help: 'prints mkit server version',
         request: { verb: :get, uri: '/mkit/version'},
       },
       {
@@ -96,47 +111,93 @@ class MKItClient
             help: 'stop proxy service',
           },
           {
+            cmd: 'restart',
+            request: { verb: :put, uri: '/mkit/proxy/restart'},
+            help: 'restarts proxy service',
+          },
+          {
             cmd: 'status',
             request: { verb: :get, uri: '/mkit/proxy/status'},
             help: 'proxy service status',
           },
         ],
         help: 'proxy status and control',
+        usage: ['<start|stop|restart|status>'],
       },
     ]
-#    @command_dict << 
-#      {
-#        cmd: 'help',
-#        help: 'Usage',
-#        options: @command_dict.each { |c| { cmd: c.cmd } }.map.to_a
-#      }
     command_dict
   end
 
-  def help(cmd = nil)
-     puts "help [#{cmd}]"
+  def help(cause: nil, cmd: nil)
+   msg = ""
+   if cause.nil?
+     my_cmd = cmd
+   else
+     msg += "MKItc: #{cause.message}\n"
+     my_cmd = cause.command
+   end
+   if my_cmd.nil?
+     msg += "\nUsage: mkitc <command> [options]\n\n"
+     msg += "Micro k8s on Ruby - a simple tool to mimic a (very) minimalistic k8 cluster\n\n"
+     msg += "Commands:\n\n"
+     dict.each{ |c|
+       msg += "%-10s %s\n" % [c[:cmd], c[:help]]
+     }
+     msg += "\n"
+     msg += "Run 'mkitc help command' for specific command information.\n\n"
+   else
+     msg += "\nUsage: mkitc %s %s\n\n" % [my_cmd[:cmd], my_cmd[:usage].nil? ? '' : my_cmd[:usage].join(' ')]
+     msg += "%s\n" % [my_cmd[:help]]
+     unless my_cmd[:options].nil?
+       msg += "\nOptions:\n"
+       my_cmd[:options].each{ |c|
+         msg += "%-10s %s\n" % [c[:cmd], c[:help]]
+       }
+     end
+     msg += "\n"
+   end
+   puts msg
+   exit 1
   end
 
   def create(request, request_hash = nil)
-    puts "CREATE CALLED #{request} - #{request_hash}"
-  end
+    raise InvalidParametersException.new('File not found.', c = self.dict.select{ |k| k[:cmd] == 'create'}.first) unless File.file?(request_hash[:file])
 
-  def update (request, request_hash = nil)
     yaml = YAML.load_file(request_hash[:file])
     if yaml["service"].nil?
-      raise 'update: invalid configuration file'
+      raise InvalidParametersException.new('Invalid configuration file', c = self.dict.select{ |k| k[:cmd] == 'create'}.first)
+    else
+      request(request, request_hash)
+    end
+  end
+
+  def update(request, request_hash = nil)
+    raise InvalidParametersException.new('File not found.', c = self.dict.select{ |k| k[:cmd] == 'update'}.first) unless File.file?(request_hash[:file])
+
+    yaml = YAML.load_file(request_hash[:file])
+    if yaml["service"].nil?
+      raise InvalidParametersException.new('Invalid configuration file', c = self.dict.select{ |k| k[:cmd] == 'update'}.first)
     else
       id = yaml["service"]["name"]
       request_hash[:id] = id
-      request({ verb: :put, uri: "/services/<%=id%>" }, request_hash)
+      request(request, request_hash)
     end
   end
 
   def parse_args(args)
-    schema = dict.dup
     cmd = args[0]
-    c = schema.select{ |k| k[:cmd] == cmd}.first
-    return help if c.nil?
+    c = nil
+    # short circuit for help
+    if cmd == 'help' || args.size == 0
+      if args.size > 1
+        c = self.dict.select{ |k| k[:cmd] == args[1]}.first
+        raise InvalidParametersException.new("'#{args[1]}' is not a valid help topic.") if c.nil?
+      end
+      return help(cmd: c)
+    else
+      c = self.dict.select{ |k| k[:cmd] == cmd}.first
+    end
+    raise InvalidParametersException.new("Command not found") if c.nil?
 
     myargs = args.dup
     myargs.delete(cmd)
@@ -149,7 +210,7 @@ class MKItClient
     min_options_size = c[:options].nil? ? 0 : 1
     min_args_size = min_args_size + min_options_size
 
-    return help(c) if myargs.size > max_args_size || myargs.size < min_args_size
+    raise InvalidParametersException.new("Invalid parameters found.",c) if myargs.size > max_args_size || myargs.size < min_args_size
 
     request_hash = {}
     request = c[:request]
@@ -158,7 +219,8 @@ class MKItClient
       unless c[:args].nil?
         idx = 0
         c[:args].each { |a|
-          request_hash[a[:name]] = myargs[idx]
+          request_hash[a[:name].to_sym] = myargs[idx]
+          request[:uri] = request[:uri] + a[:uri] unless a[:uri].nil?
           idx+=1
         }
       end
@@ -167,14 +229,13 @@ class MKItClient
         option = nil
         myargs.each{ |s|
           option = c[:options].select{ |o| o[:cmd] == s}.first
-          puts "#{option} <- #{s}"
-          return help(c) if option.nil? || option.empty?
+          raise InvalidParametersException.new("Invalid parameters found.",c) if option.nil? || option.empty?
         }
-        return help(c) if option.nil? || option.empty?
+        raise InvalidParametersException.new("Invalid parameters found.",c) if option.nil? || option.empty?
         request = option[:request]
       end
     end
-    return help if request.nil?
+    raise InvalidParametersException.new("Can't find request.") if request.nil?
 
     if self.respond_to?c[:cmd]
       self.send(c[:cmd], request, request_hash)
@@ -186,6 +247,8 @@ class MKItClient
   def doIt(args)
     result = parse_args(args)
     puts result
+  rescue InvalidParametersException => e
+    help(cause: e)
   end
 
   def request(request, request_args = nil)

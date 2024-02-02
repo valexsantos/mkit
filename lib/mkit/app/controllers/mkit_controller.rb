@@ -10,6 +10,14 @@ class MkitController < MKIt::Server
     MKIt::HAProxy.restart
   end
 
+  put'/mkit/proxy/start' do
+    MKIt::HAProxy.start
+  end
+
+  put'/mkit/proxy/stop' do
+    MKIt::HAProxy.stop
+  end
+
   get'/mkit/proxy/status' do
     MKIt::HAProxy.status
   end
