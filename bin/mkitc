@@ -51,7 +51,7 @@ class MKItClient
         args: [
           { name: 'id', mandatory: true }
         ],
-        help: 'service logs',
+        help: 'prints service logs',
         usage: ['<service_id_or_name>'],
         request: { verb: :get, uri: '/services/<%=id%>/logs' }
       },
