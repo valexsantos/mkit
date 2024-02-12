@@ -66,6 +66,7 @@ Commands:
 
 ps         show services status (alias for status)
 status     show services status
+logs       service logs
 start      start service
 stop       stop service
 restart    restart service
