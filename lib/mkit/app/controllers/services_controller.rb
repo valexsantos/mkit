@@ -31,6 +31,11 @@ class ServicesController < MKIt::Server
     resp
   end
 
+  get '/services/:id/logs' do
+    srv = find_by_id_or_name
+    srv.log
+  end
+
   # curl -X PUT localhost:4567/services/1  -F "file=@mkit/samples/mkit.yml"
   put '/services/:id' do
     srv = find_by_id_or_name

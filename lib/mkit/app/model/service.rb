@@ -131,7 +131,7 @@ class Service < ActiveRecord::Base
   end
 
   def create_pods_network
-    create_network(self.pods_network) if !network_exists?(self.pods_network)
+    create_network(self.pods_network) unless network_exists?(self.pods_network)
   end
 
   def deploy_network
@@ -237,6 +237,15 @@ class Service < ActiveRecord::Base
     }
   end
 
+  def log
+    out = ""
+    self.pod.each { |p|
+      out << "<<<< %s | %s >>>>\n" % [self.name, p.name]
+      puts logs(p.name)
+      out << logs(p.name)
+    }
+    out
+  end
   def as_json(options = {})
     srv = super
     a=[:pod, :volume, :service_config, :service_port]

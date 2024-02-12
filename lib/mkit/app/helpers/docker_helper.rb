@@ -32,6 +32,13 @@ module MKIt
     end
 
     #
+    # logs
+    #
+    def logs(instance_id)
+      `docker logs -n 20 #{instance_id}`
+    end
+
+    #
     # network
     #
 
