@@ -1,0 +1,16 @@
+#
+service:
+  name: minio
+  image: minio/minio
+  command: server /data --console-address ":9001"
+  network: bridge
+  ports:
+    - 9001:9001:http:round_robin
+    - 9000:9000:tcp:round_robin
+  environment:
+    MINIO_ACCESS_KEY: minio
+    MINIO_SECRET_KEY: minio123
+  volumes:
+    #- docker://minio_data:/data
+    - /tmp/minio_data:/data
+
