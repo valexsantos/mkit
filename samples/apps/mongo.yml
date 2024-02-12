@@ -1,0 +1,9 @@
+#
+service:
+  name: mongo
+  image: mongo:4.0
+  command: "--smallfiles"
+  network: bridge
+  ports:
+    - 27017:27017:tcp:round_robin
+

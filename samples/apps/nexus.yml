@@ -1,0 +1,13 @@
+#
+service:
+  name: nexus
+  image: sonatype/nexus3
+  network: bridge
+  ports:
+    - 80:8081:http:round_robin
+  resources:
+    max_replicas: 1
+    min_replicas: 1
+  volumes:
+    - docker://nexus_data:/nexus-data
+

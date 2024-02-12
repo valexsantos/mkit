@@ -1,0 +1,16 @@
+#
+service:
+  name: kafka-magic
+  network: kafka-cluster
+  ports:
+    - 80:80:http:round_robin
+  image: digitsy/kafka-magic
+  environment:
+    KMAGIC_ALLOW_TOPIC_DELETE: "true"
+    KMAGIC_ALLOW_SCHEMA_DELETE: "true"
+    KMAGIC_CONFIG_STORE_TYPE: "file"
+    KMAGIC_CONFIG_STORE_CONNECTION: "Data Source=/config/KafkaMagicConfig.db;"
+    KMAGIC_CONFIG_ENCRYPTION_KEY: "123456"
+  volumes:
+    - docker://kafka_magic_config:/config
+

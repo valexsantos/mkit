@@ -1,0 +1,11 @@
+#
+service:
+  name: redis-sentinel
+  image: bitnami/redis-sentinel:latest
+  network: bridge
+  ports:
+    - 26379:26379:tcp:round_robin
+  environment:
+    REDIS_MASTER_HOST: redis
+
+

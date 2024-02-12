@@ -1,0 +1,9 @@
+#
+service:
+  name: redis
+  image: redis:4.0-alpine
+  network: bridge
+  ports:
+    - 6379:6379:tcp:round_robin
+
+
