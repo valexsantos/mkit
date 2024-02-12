@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
   s.summary      = 'Micro Kubernets on Ruby'
   s.bindir       = 'bin'
   s.homepage     = 'https://github.com/valexsantos/mkit'
-  s.license      = 'Apache-2.0'
+  s.license      = 'MIT'
   s.description =  'Micro k8s on Ruby - a simple tool to deploy containers to mimic a (very) minimalistic k8 cluster with a nice REST API'
   # s.require_paths = ["."]
   s.author = 'Vasco Santos'
