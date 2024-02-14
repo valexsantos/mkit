@@ -1,5 +1,5 @@
 #
-# kidsd server options (for systemd unit | daemontools)
+# mkitd server options (for systemd unit | daemontools)
 #
 OPTIONS=""
 

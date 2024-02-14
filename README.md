@@ -49,13 +49,13 @@ or after the `gem install mkit-<version>.gem`. The server and client will be ins
  0.65s     info: MKIt is up and running! [ec=0xbe0] [pid=45804] [2023-12-29 15:46:04 +0000]
 ```
 
-There's also samples on the samples dir, for daemontools and systemd.
+There's also samples on the samples dir, for `daemontools` and `systemd`.
 
 ### Accessing the API
 
-A client is provided to interact with mkit server.
+A client is provided to interact with `mkit server`.
 
-Run `mkitc help` to list current supported commands.
+Run `mkitc help` for a list of current supported commands.
 
 ```
 Usage: mkitc <command> [options]
@@ -75,6 +75,7 @@ update     update service
 rm         remove service
 version    prints mkit server version
 proxy      haproxy status and control
+profile    mkit client configuration profile
 
 Run 'mkitc help <command>' for specific command information.
 ```
@@ -93,7 +94,40 @@ The service `postgres` is available on IP `10.210.198.10:5432`
 
 ## Configuration
 
-On startup, configuration files on `config` directory will be copied to `/etc/mkit`. HAProxy config directory and control commands are defined on `mkit_config.yml`
+### Server configuration
+
+On startup, configuration files on `config` directory will be copied to `/etc/mkit`.
+
+The server is available by default on `http://localhost:4567` but you can configure server startup parameters on `/etc/mkit/mkitd_config.sh`
+
+Please check `samples/systemd` or `samples/daemontools` directories for more details.
+
+```
+# /etc/mkit/mkitd_config.sh
+#
+# mkitd server options (for systemd unit | daemontools)
+#
+OPTIONS=""
+# e.g. OPTIONS="-b 0.0.0.0"
+```
+HAProxy config directory and control commands are defined on `mkit_config.yml`
+
+```
+# /etc/mkit/mkit_config.yml - mkit server configuration file. 
+mkit:
+  my_network:
+    ip: 10.210.198.1
+  haproxy:
+    config_dir: /etc/haproxy/haproxy.d
+    ctrl:
+      start:   systemctl start   haproxy
+      stop:    systemctl stop    haproxy
+      reload:  systemctl reload  haproxy
+      restart: systemctl restart haproxy
+      status:  systemctl status  haproxy
+  database:
+    env: development
+```
 
 You must configure `haproxy` to use config directory. e.g. on Ubuntu
 
@@ -110,6 +144,20 @@ CONFIG="/etc/haproxy/haproxy.d"
 
 # Add extra flags here, see haproxy(1) for a few options
 #EXTRAOPTS="-de -m 16"
+```
+### Client configuration
+
+On `mkitc` first call, default configuration will be copied to `$HOME/.mkit` with `local`default profile set.
+
+You can add more servers and change active profile with `$mkitc profile set <profile_name>`, e.g. `$mkitc profile set server_2` 
+
+```
+# ~/.mkit/mkitc_config.yml
+mkit:
+  local: 
+    server.uri: http://localhost:4567
+  server_2:  # you can add more servers. change the client active profile with mkitc profile command
+    server.uri: http://192.168.29.232:4567
 ```
 
 ### Service
