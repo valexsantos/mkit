@@ -9,25 +9,24 @@ require 'json'
 require 'net_http_unix'
 require 'securerandom'
 require 'erb'
+require 'uri'
+require 'fileutils'
 
-class InvalidParametersException < RuntimeError
+class InvalidParametersException < Exception
   attr_reader :command
+
   def initialize(cause, command = nil)
     super(cause)
     @command = command
   end
 end
 
-class MKItClient
-  def initialize
-    @client = NetX::HTTPUnix.new('localhost', 4567)
-  end
-
-  def dict
+class CommandPalette
+  def schema
     global_args = [
       { short: '-v', long: '--verbose', help: 'verbose', mandatory: false, value: nil }
     ]
-    command_dict = [
+    [
       {
         cmd: 'ps',
         args: [
@@ -140,9 +139,204 @@ class MKItClient
         ],
         help: 'haproxy status and control',
         usage: ['<start|stop|restart|status>']
+      },
+      {
+        cmd: 'profile',
+        options: [
+          {
+            cmd: 'set',
+            request: { verb: 'set' },
+            args: [
+              { name: 'profile_name', mandatory: true }
+            ],
+            help: 'set mkit client configuration profile'
+          },
+          {
+            cmd: 'show',
+            request: { verb: 'show' },
+            help: 'show mkit client current profile'
+          }
+        ],
+        help: 'mkit client configuration profile',
+        usage: ['<[set <profile_name>]|[show]>']
       }
     ]
-    command_dict
+  end
+end
+
+class MKItClient
+  def initialize
+    @root = File.expand_path('..', __dir__)
+    @config_dir = "#{ENV['HOME']}/.mkit"
+    @profile_file = "#{@config_dir}/current"
+    @commands = CommandPalette.new
+    create_default_config
+  end
+
+  def create_default_config
+    unless File.exist?(@config_dir)
+      puts "Creating config directory on '#{@config_dir}'..."
+      FileUtils.mkdir_p(@config_dir)
+    end
+    FileUtils.cp("#{@root}/config/mkitc_config.yml", @config_dir) unless File.exist?("#{@config_dir}/mkitc_config.yml")
+    profile({ verb: 'set' }, { profile_name: 'local' }) unless File.exist?(@profile_file)
+  end
+
+  def read_configuration
+    current_profile = File.read(@profile_file)
+    if current_profile.nil? || current_profile.empty?
+      # force set default
+      profile({ verb: 'set' }, { profile_name: 'local' })
+      current_profile = 'local'
+    end
+    cfg = YAML.load_file("#{@config_dir}/mkitc_config.yml")
+
+    if cfg['mkit'].nil? || cfg['mkit'][current_profile.lstrip].nil?
+      raise InvalidParametersException, "invalid configuration found on '~/.mkit' or profile not found"
+    end
+
+    @configuration = cfg['mkit'][current_profile.lstrip]
+  end
+
+  def client
+    read_configuration
+    uri = URI(@configuration['server.uri'])
+    case uri.scheme
+    when 'https'
+      @client = NetX::HTTPUnix.new(uri.host, uri.port)
+      @client.use_ssl = true
+      @client.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    when 'http'
+      @client = NetX::HTTPUnix.new(uri.host, uri.port)
+    when 'sock'
+      @client = NetX::HTTPUnix.new("unix://#{uri.path}")
+    else
+      raise InvalidParametersException, 'Invalid mkit server uri. Please check configuration'
+    end
+    @client
+  end
+
+  def dict
+    @commands.schema
+  end
+
+  def find_command(cmd)
+    dict.select { |k| k[:cmd] == cmd }.first
+  end
+
+  def parse_args(args)
+    cmd = args[0]
+    c = nil
+    # short circuit for help
+    if cmd == 'help' || args.empty?
+      if args.size > 1
+        c = find_command(args[1])
+        raise InvalidParametersException, "'#{args[1]}' is not a valid help topic." if c.nil?
+      end
+      return help(cmd: c)
+    else
+      c = find_command(cmd)
+    end
+    raise InvalidParametersException, 'Command not found' if c.nil?
+
+    command = c
+    myargs = args.dup
+    myargs.delete(cmd)
+
+    request_hash = {}
+    request = command[:request]
+    unless myargs.empty?
+      # options
+      unless c[:options].nil?
+        command = c[:options].select { |o| o[:cmd] == myargs[0] }.first
+        raise InvalidParametersException.new('Invalid parameters found.', c) if command.nil? || command.empty?
+
+        myargs.delete_at(0)
+        request = command[:request]
+      end
+      fill_cmd_args(command[:args], myargs, request, request_hash)
+    end
+    raise InvalidParametersException.new('Invalid command or parameters.', c) if request.nil?
+
+    validate_command(command, request_hash)
+    if respond_to? c[:cmd]
+      send(c[:cmd], request, request_hash)
+    else
+      request(request, request_hash)
+    end
+  end
+
+  def fill_cmd_args(args, myargs, request, request_hash)
+    return if args.nil?
+
+    idx = 0
+    args.each do |a|
+      request_hash[a[:name].to_sym] = myargs[idx]
+      request[:uri] = request[:uri] + a[:uri] unless a[:uri].nil?
+      idx += 1
+    end
+  end
+
+  def validate_command(command, request_hash)
+    return if command[:args].nil?
+
+    command[:args].select { |a| a[:mandatory] == true }.each do |a|
+      if request_hash[a[:name].to_sym].nil?
+        raise InvalidParametersException.new("Missing mandatory parameter: #{a[:name]}", command)
+      end
+    end
+  end
+
+  def request(request, request_args = nil)
+    req = nil
+    uri = ERB.new(request[:uri]).result_with_hash(request_args)
+    request[:file] = request_args[:file]
+
+    unless request[:params].nil? || request[:params].empty?
+      uri = uri + '?' + request[:params].map { |k, v| "#{k}=#{v}" }.join('&')
+    end
+    case request[:verb]
+    when :post
+      req = Net::HTTP::Post.new(uri)
+      unless request[:file].nil?
+        (body, boundary) = attach(request[:file])
+        req.body = body
+        req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
+      end
+    when :put
+      req = Net::HTTP::Put.new(uri)
+      unless request[:file].nil?
+        (body, boundary) = attach(request[:file])
+        req.body = body
+        req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
+      end
+    when :patch
+      req = Net::HTTP::Patch.new(uri)
+    when :get
+      req = Net::HTTP::Get.new(uri)
+    when :delete
+      req = Net::HTTP::Delete.new(uri)
+    end
+    client.request(req).body
+  end
+
+  def attach(file)
+    boundary = SecureRandom.alphanumeric
+    body = []
+    body << "--#{boundary}\r\n"
+    body << "Content-Disposition: form-data; name=file; filename='#{File.basename(file)}'\r\n"
+    body << "Content-Type: text/plain\r\n"
+    body << "\r\n"
+    body << File.read(file)
+    body << "\r\n--#{boundary}--\r\n"
+    [body.join, boundary]
+  end
+
+  def doIt(args)
+    result = parse_args(args)
+    puts result
+  rescue InvalidParametersException => e
+    help(cause: e)
   end
 
   def help(cause: nil, cmd: nil)
@@ -179,12 +373,12 @@ class MKItClient
 
   def create(request, request_hash = nil)
     unless File.file?(request_hash[:file])
-      raise InvalidParametersException.new('File not found.', c = dict.select { |k| k[:cmd] == 'create' }.first)
+      raise InvalidParametersException.new('File not found.', find_command('create'))
     end
 
     yaml = YAML.load_file(request_hash[:file])
     if yaml['service'].nil?
-      raise InvalidParametersException.new('Invalid configuration file', c = dict.select { |k| k[:cmd] == 'create' }.first)
+      raise InvalidParametersException.new('Invalid configuration file', find_command('create'))
     else
       request(request, request_hash)
     end
@@ -192,12 +386,12 @@ class MKItClient
 
   def update(request, request_hash = nil)
     unless File.file?(request_hash[:file])
-      raise InvalidParametersException.new('File not found.', c = dict.select { |k| k[:cmd] == 'update' }.first)
+      raise InvalidParametersException.new('File not found.', find_command('update'))
     end
 
     yaml = YAML.load_file(request_hash[:file])
     if yaml['service'].nil?
-      raise InvalidParametersException.new('Invalid configuration file', c = dict.select { |k| k[:cmd] == 'update' }.first)
+      raise InvalidParametersException.new('Invalid configuration file', find_command('update'))
     else
       id = yaml['service']['name']
       request_hash[:id] = id
@@ -205,118 +399,37 @@ class MKItClient
     end
   end
 
-  def parse_args(args)
-    cmd = args[0]
-    c = nil
-    # short circuit for help
-    if cmd == 'help' || args.empty?
-      if args.size > 1
-        c = dict.select { |k| k[:cmd] == args[1] }.first
-        raise InvalidParametersException, "'#{args[1]}' is not a valid help topic." if c.nil?
-      end
-      return help(cmd: c)
-    else
-      c = dict.select { |k| k[:cmd] == cmd }.first
-    end
-    raise InvalidParametersException, 'Command not found' if c.nil?
-
-    myargs = args.dup
-    myargs.delete(cmd)
-
-    max_args_size = c[:args].nil? ? 0 : c[:args].size
-    max_options_size = c[:options].nil? ? 0 : 1
-    max_args_size += max_options_size
-
-    min_args_size = c[:args].nil? ? 0 : c[:args].select { |a| a[:mandatory] == true }.size
-    min_options_size = c[:options].nil? ? 0 : 1
-    min_args_size += min_options_size
-
-    if myargs.size > max_args_size || myargs.size < min_args_size
-      raise InvalidParametersException.new('Invalid parameters found.', c)
+  def profile(request, request_hash = {})
+    cfg = YAML.load_file("#{@config_dir}/mkitc_config.yml")
+    cmd = find_command('profile')
+    if cfg['mkit'].nil?
+      raise InvalidParametersException.new(
+        "Invalid configuration on '~/.mkit'\nPlease fix or clean up for defaults apply", cmd
+      )
     end
 
-    request_hash = {}
-    request = c[:request]
-    unless myargs.empty?
-      unless c[:args].nil?
-        idx = 0
-        c[:args].each do |a|
-          request_hash[a[:name].to_sym] = myargs[idx]
-          request[:uri] = request[:uri] + a[:uri] unless a[:uri].nil?
-          idx += 1
-        end
-      end
-      # options
-      unless c[:options].nil?
-        option = nil
-        myargs.each do |s|
-          option = c[:options].select { |o| o[:cmd] == s }.first
-          raise InvalidParametersException.new('Invalid parameters found.', c) if option.nil? || option.empty?
-        end
-        raise InvalidParametersException.new('Invalid parameters found.', c) if option.nil? || option.empty?
-
-        request = option[:request]
-      end
-    end
-    raise InvalidParametersException, "Can't find request." if request.nil?
-
-    if respond_to? c[:cmd]
-      send(c[:cmd], request, request_hash)
-    else
-      request(request, request_hash)
-    end
-  end
-
-  def doIt(args)
-    result = parse_args(args)
-    puts result
-  rescue InvalidParametersException => e
-    help(cause: e)
-  end
-
-  def request(request, request_args = nil)
-    req = nil
-    uri = ERB.new(request[:uri]).result_with_hash(request_args)
-    request[:file] = request_args[:file]
-
-    unless request[:params].nil? || request[:params].empty?
-      uri = uri + '?' + request[:params].map { |k, v| "#{k}=#{v}" }.join('&')
-    end
     case request[:verb]
-    when :post
-      req = Net::HTTP::Post.new(uri)
-      unless request[:file].nil?
-        (body, boundary) = attach(request[:file])
-        req.body = body
-        req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
+    when 'set'
+      profile = request_hash[:profile_name]
+      if cfg['mkit'][profile.lstrip].nil?
+        raise InvalidParametersException.new("Profile not found on '~/.mkit' configuration", cmd)
       end
-    when :put
-      req = Net::HTTP::Put.new(uri)
-      unless request[:file].nil?
-        (body, boundary) = attach(request[:file])
-        req.body = body
-        req['Content-Type'] = "multipart/form-data, boundary=#{boundary}"
-      end
-    when :patch
-      req = Net::HTTP::Patch.new(uri)
-    when :get
-      req = Net::HTTP::Get.new(uri)
-    when :delete
-      req = Net::HTTP::Delete.new(uri)
-    end
-    @client.request(req).body
-  end
 
-  def attach(file)
-    boundary = SecureRandom.alphanumeric
-    body = []
-    body << "--#{boundary}\r\n"
-    body << "Content-Disposition: form-data; name=file; filename='#{File.basename(file)}'\r\n"
-    body << "Content-Type: text/plain\r\n"
-    body << "\r\n"
-    body << File.read(file)
-    body << "\r\n--#{boundary}--\r\n"
-    [body.join, boundary]
+      puts "Setting current profile to #{profile}."
+      File.write(@profile_file, request_hash[:profile_name])
+      ''
+    when 'show'
+      active = File.read("#{@config_dir}/current")
+      cfg['mkit'].map do |k, _v|
+        if k == active
+          "*#{k}"
+        else
+          k
+        end
+      end.join(' ')
+    else
+      raise InvalidParametersException.new("Invalid 'profile' operation", cmd)
+    end
   end
 end
 

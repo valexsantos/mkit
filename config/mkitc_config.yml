@@ -1,0 +1,3 @@
+mkit:
+  local:
+    server.uri: http://localhost:4567
