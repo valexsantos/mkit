@@ -4,6 +4,10 @@ module MKIt
   module Utils
     module_function
 
+    MKIT_CRT = 'mkit.crt'
+    MKIT_KEY = 'mkit.key'
+    MKIT_PEM = 'mkit.pem'
+
     def me
       'mkit'
     end
@@ -22,6 +26,10 @@ module MKIt
 
     def config_dir
       @config_dir.nil? ? "#{self.root}/config" : @config_dir
+    end
+
+    def proxy_cert
+      "#{config_dir}/#{MKIT_PEM}"
     end
 
     def load_db_config(db_config_dir = self.config_dir)

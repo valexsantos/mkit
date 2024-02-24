@@ -1,3 +1,4 @@
+---
 mkit:
   my_network:
     ip: 10.210.198.1
@@ -12,4 +13,5 @@ mkit:
       bin: /usr/sbin/haproxy
   database:
     env: development
-
+  clients:
+    - add_client_id: add client's id to allow access to this server
