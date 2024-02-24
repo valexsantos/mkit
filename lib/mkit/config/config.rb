@@ -6,13 +6,18 @@ require 'yaml'
 module MKIt
   module Config
     extend self
+
     def load_yml!(path)
+      @config_file = path
       @config = YAML.load(File.new(path).read).to_o
+    end
+
+    def config_file
+      @config_file
     end
     # 
     def method_missing(name,*args)
       return @config.send(name,*args)
-      super.method_missing name
     end
   end
 end

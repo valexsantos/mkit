@@ -9,6 +9,14 @@ module MKIt
     set :show_exceptions, false
     set :raise_errors, false
 
+    before do
+      api_key = request.env['HTTP_X_API_KEY']
+      cfg = YAML.load_file(MKIt::Config.config_file)
+      if cfg.nil? || cfg['mkit'].nil? || cfg['mkit']['clients'].nil? || !cfg['mkit']['clients'].include?(api_key)
+        error 401, 'Unauthorized - please add your api-key to authorized key list'
+      end
+    end
+
     error MKIt::BaseException do |e|
       MKItLogger.debug e
       error e.error_code, e.message

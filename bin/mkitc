@@ -28,6 +28,11 @@ class CommandPalette
     ]
     [
       {
+        cmd: 'init',
+        help: 'init mkit client',
+        request: { }
+      },
+      {
         cmd: 'ps',
         args: [
           { name: 'id', mandatory: false, uri: '/<%=id%>' }
@@ -170,6 +175,7 @@ class MKItClient
     @config_dir = "#{ENV['HOME']}/.mkit"
     @profile_file = "#{@config_dir}/current"
     @commands = CommandPalette.new
+    @config_file = "#{@config_dir}/mkitc_config.yml"
     create_default_config
   end
 
@@ -178,28 +184,34 @@ class MKItClient
       puts "Creating config directory on '#{@config_dir}'..."
       FileUtils.mkdir_p(@config_dir)
     end
-    FileUtils.cp("#{@root}/config/mkitc_config.yml", @config_dir) unless File.exist?("#{@config_dir}/mkitc_config.yml")
+    FileUtils.cp("#{@root}/config/mkitc_config.yml", @config_dir) unless File.exist?(@config_file)
     profile({ verb: 'set' }, { profile_name: 'local' }) unless File.exist?(@profile_file)
   end
 
-  def read_configuration
+  def read_configuration(init_call = false)
     current_profile = File.read(@profile_file)
     if current_profile.nil? || current_profile.empty?
       # force set default
       profile({ verb: 'set' }, { profile_name: 'local' })
       current_profile = 'local'
     end
-    cfg = YAML.load_file("#{@config_dir}/mkitc_config.yml")
+    cfg = YAML.load_file(@config_file)
 
     if cfg['mkit'].nil? || cfg['mkit'][current_profile.lstrip].nil?
       raise InvalidParametersException, "invalid configuration found on '~/.mkit' or profile not found"
     end
 
     @configuration = cfg['mkit'][current_profile.lstrip]
+    if !init_call && cfg['my_id'].nil?
+      raise InvalidParametersException.new("Please run 'mkitc init' to initialize mkit client.", find_command('init'))
+    end
+    @my_id = cfg['my_id']
+    cfg
   end
 
-  def client
+  def client(req)
     read_configuration
+    req['X-API-KEY'] = @my_id
     uri = URI(@configuration['server.uri'])
     case uri.scheme
     when 'https'
@@ -213,7 +225,7 @@ class MKItClient
     else
       raise InvalidParametersException, 'Invalid mkit server uri. Please check configuration'
     end
-    @client
+    @client.request(req)
   end
 
   def dict
@@ -317,7 +329,7 @@ class MKItClient
     when :delete
       req = Net::HTTP::Delete.new(uri)
     end
-    client.request(req).body
+    client(req).body
   end
 
   def attach(file)
@@ -371,6 +383,18 @@ class MKItClient
     exit 1
   end
 
+  def init(request, request_hash = nil)
+    cfg = read_configuration(true)
+    if cfg['my_id'].nil?
+      my_id = SecureRandom.uuid.gsub('-','')
+      cfg['my_id'] = my_id
+      File.write(@config_file, cfg.to_yaml)
+      puts "Please check if your api-key is on mkitd server allowed keys"
+    else
+      my_id = cfg['my_id']
+    end
+    puts "Your api-key is #{my_id}"
+  end
   def create(request, request_hash = nil)
     unless File.file?(request_hash[:file])
       raise InvalidParametersException.new('File not found.', find_command('create'))

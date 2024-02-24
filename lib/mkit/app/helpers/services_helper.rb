@@ -24,9 +24,28 @@ module MKIt
     end
 
     def build_table_row(data)
-      ports = data.service_port&.each.map { |p| "#{p.mode}/#{p.external_port}" }.join(',')
+      ports = data.service_port&.each.map { |p| build_port(p) }.join(',')
       pods = data.pod.each.map { |p| p.name.to_s }.join(' ')
       [data.id, data.name, data.lease&.ip, ports, pods, data.status]
+    end
+
+    def build_port(p)
+      case p.mode
+      when 'http'
+        if p.ssl == true
+          "#{p.mode}s/#{p.external_port}"
+        else
+          "#{p.mode}/#{p.external_port}"
+        end
+      when 'tcp'
+        if p.ssl == true
+          "s#{p.mode}/#{p.external_port}"
+        else
+          "#{p.mode}/#{p.external_port}"
+        end
+      else
+        "#{p.mode}/#{p.external_port}"
+      end
     end
   end
 end

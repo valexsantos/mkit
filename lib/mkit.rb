@@ -29,6 +29,7 @@ require 'mkit/docker_listener'
 require 'mkit/app/helpers/haproxy'
 require 'active_record/tasks/database_tasks'
 require 'mkit/utils'
+require 'mkit/ssl/easy_ssl'
 
 MKItLogger = Console.logger
 
@@ -40,15 +41,24 @@ module MKIt
 
   def self.configure(options:)
     @root = MKIt::Utils.root
+    @options = options
     MKItLogger.debug!
     #
     # config dir
     @config_dir = if ENV['RACK_ENV'] != 'development'
-                    options[:config_dir].nil? ? '/etc/mkit' : options[:config_dir]
+                    @options[:config_dir].nil? ? '/etc/mkit' : @options[:config_dir]
                   else
-                    options[:config_dir].nil? ? "#{@root}/config" : options[:config_dir]
+                    @options[:config_dir].nil? ? "#{@root}/config" : @options[:config_dir]
                   end
     MKIt::Utils.set_config_dir(@config_dir)
+    # defaults
+    @bind = options[:bind] ||= 'localhost'
+    @port = options[:port] ||= 4567
+    @ssl = options[:ssl]  ||= true
+    @verify_peer = options[:verify_peer] ||= false
+    @cert_chain_file = options[:cert_chain_file] ||= "#{@config_dir}/#{MKIt::Utils::MKIT_CRT}"
+    @private_key_file = options[:private_key_file] ||= "#{@config_dir}/#{MKIt::Utils::MKIT_KEY}"
+
     # create dirs
     if ENV['RACK_ENV'] != 'development' || !options[:config_dir].nil?
       check_config_files = false
@@ -65,9 +75,11 @@ module MKIt
         exit
       end
     end
-    #
+
     # load configuration
     MKIt::Initializers.load_my_configuration
+    # cert
+    MKIt::EasySSL.create_self_certificate(@config_dir)
     #
     # run config based tasks
     FileUtils.mkdir_p(MKIt::Config.mkit.haproxy.config_dir)
@@ -90,6 +102,20 @@ module MKIt
     DatabaseTasks.migrations_paths = ["#{@root}/db/migrate"]
     DatabaseTasks.db_dir = 'db'
     DatabaseTasks.root = @root
+  end
+
+  def self.options(server)
+    if @ssl
+      ssl_options = {
+        private_key_file:  @private_key_file,
+        cert_chain_file: @cert_chain_file,
+        verify_peer: @verify_peer
+      }
+      server.ssl = true
+      server.ssl_options = ssl_options
+    end
+    server.backend.port = @port
+    server.backend.host = @bind
   end
 
   def self.establish_db_connection
