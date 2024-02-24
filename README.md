@@ -1,6 +1,7 @@
 # MKIt - Micro Kubernetes on Ruby
 
 This is micro kubernetes(tm) on Ruby(tm), a simple tool to deploy containers to mimic a (very) minimalistic k8 cluster with a nice REST API.
+It's also an easier way to make your services locally available, without the need to care about local `ports` availability.
 
 It contains an internal DNS and uses HAProxy for routing/balancing/fail-over for Pods access.
 The database is a simple sqlite3 db and the server is a Sinatra based application.
@@ -25,10 +26,10 @@ This is a simple ruby gem, so to install run
 
 ## Running
 
-The `daemon` requires `root` user (due to `ip` and `haproxy`), you can run it directly on the repository root...
-
+The `mkitd server daemon` requires `root` user (due to `ip` and `haproxy`).
+After installing the gem, the server and client will be available on host.
 ```
-# ./mkitd  --help
+# mkitd  --help
 Usage: mkitd [options]
     -c config-dir                    set the config dir (default is /etc/mkit)
     -p port                          set the port (default is 4567)
@@ -41,19 +42,11 @@ Usage: mkitd [options]
    
 ```
 
-or after the `gem install mkit-<version>.gem`. The server and client will be installed on host.
-
-```
-# mkitd
-...
- 0.65s     info: MKIt is up and running! [ec=0xbe0] [pid=45804] [2023-12-29 15:46:04 +0000]
-```
-
-There's also samples on the samples dir, for `daemontools` and `systemd`.
+There's also samples on the samples dir, for [systemd](samples/systemd) and [daemontools](samples/daemontools) as well for some miscellaneous [spps](samples/apps).
 
 ### Accessing the API
 
-A client is provided to interact with `mkit server`.
+A client is provided to interact with MKIt server.
 
 Run `mkitc help` for a list of current supported commands.
 
@@ -64,6 +57,7 @@ Micro k8s on Ruby - a simple tool to mimic a (very) minimalistic k8 cluster
 
 Commands:
 
+init       init mkit client
 ps         show services status (alias for status)
 status     show services status
 logs       prints service logs
@@ -84,23 +78,25 @@ Example:
 
 ```
 $ mkitc ps postgres
-+----+----------+---------------+----------+--------------+---------+
-| id |   name   |     addr      |  ports   |     pods     | status  |
-+----+----------+---------------+----------+--------------+---------+
-| 2  | postgres | 10.210.198.10 | tcp/4532 | 49b5e4c8f247 | RUNNING |
-+----+----------+---------------+----------+--------------+---------+
++----+-------+---------------+-------------------+--------------+---------+
+| id | name  |     addr      |       ports       |     pods     | status  |
++----+-------+---------------+-------------------+--------------+---------+
+| 1  | mongo | 10.210.198.10 | tcp/27017         | 106e2b59cb11 | RUNNING |
+| 2  | nexus | 10.210.198.11 | http/80,https/443 | 68e239e5102a | RUNNING |
++----+-------+---------------+-------------------+--------------+---------+
 ```
-The service `postgres` is available on IP `10.210.198.10:5432`
+The service `mongo` is available on IP `10.210.198.10:27017`
+The service `nexus` is available on IP `10.210.198.11:80` and on port `443` with ssl.
 
 ## Configuration
 
 ### Server configuration
 
-On startup, configuration files on `config` directory will be copied to `/etc/mkit`.
+On startup, [configuration](config) will be created on `/etc/mkit`.
 
-The server is available by default on `http://localhost:4567` but you can configure server startup parameters on `/etc/mkit/mkitd_config.sh`
+The server will available by default on `https://localhost:4567` but you can configure server startup parameters on `/etc/mkit/mkitd_config.sh`
 
-Please check `samples/systemd` or `samples/daemontools` directories for more details.
+Please check [systemd](samples/systemd) or [daemontools](samples/daemontools) directories for more details.
 
 ```
 # /etc/mkit/mkitd_config.sh
@@ -110,7 +106,7 @@ Please check `samples/systemd` or `samples/daemontools` directories for more det
 OPTIONS=""
 # e.g. OPTIONS="-b 0.0.0.0"
 ```
-HAProxy config directory and control commands are defined on `mkit_config.yml`
+HAProxy config directory and control commands are defined on [mkit_config.yml](config/mkit_config.yml)
 
 ```
 # /etc/mkit/mkit_config.yml - mkit server configuration file. 
@@ -127,6 +123,10 @@ mkit:
       status:  systemctl status  haproxy
   database:
     env: development
+  clients:
+    - client_1_api_key
+    - client_2_api_key
+    - ...
 ```
 
 You must configure `haproxy` to use config directory. e.g. on Ubuntu
@@ -145,19 +145,40 @@ CONFIG="/etc/haproxy/haproxy.d"
 # Add extra flags here, see haproxy(1) for a few options
 #EXTRAOPTS="-de -m 16"
 ```
+
+#### Authorization
+
+To access MKIt server API, you must add each client `api-key` to server configuration:
+
+```
+# /etc/mkit/mkit_config.yml - mkit server configuration file. 
+mkit:
+  my_network:
+...
+  clients:
+    - client_1_api_key
+    - client_2_api_key
+    - ...
+```
+
 ### Client configuration
 
 On `mkitc` first call, default configuration will be copied to `$HOME/.mkit` with `local`default profile set.
 
-You can add more servers and change active profile with `$mkitc profile set <profile_name>`, e.g. `$mkitc profile set server_2` 
+You must call `mkitc init` to initialize client configuration.
+
+Client identification key (`my_id`) will be generated, printed out to console and saved to the client's configuration file.
+
+You may edit the local configuration file to add more servers and change active profile with `$mkitc profile set <profile_name>`, e.g. `$mkitc profile set server_2`
 
 ```
 # ~/.mkit/mkitc_config.yml
 mkit:
   local: 
-    server.uri: http://localhost:4567
+    server.uri: https://localhost:4567
   server_2:  # you can add more servers. change the client active profile with mkitc profile command
-    server.uri: http://192.168.29.232:4567
+    server.uri: https://192.168.29.232:4567
+my_id: unique_key # this key os generated running mkitc init
 ```
 
 ### Service
@@ -171,7 +192,12 @@ service:
           #   <external_port>:[internal_port]:<tcp|http>:[round_robin (default)|leastconn]
           # to define a range on `external_port`, leave `internal_port` blank
           #   - 5000-5100::tcp:round_robin
-          # range on `internal_port` is not supported 
+          # range on `internal_port` is not supported
+          # ssl suport
+          #   <external_port>:[internal_port]:<tcp|http>:round_robin|leastconn[:ssl[,<cert.pem>(mkit.pem default)>]]
+          # e.g.
+          #  - 443:80:http:round_robin:ssl # crt file is mkit.pem
+          #  - 443:80:http:round_robin:ssl,/etc/pki/foo.pem # crt file full path
     - 5672:5672:tcp:round_robin
     - 80:15672:http:round_robin
   resources:
