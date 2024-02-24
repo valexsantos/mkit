@@ -12,7 +12,7 @@ module MKIt
     before do
       api_key = request.env['HTTP_X_API_KEY']
       cfg = YAML.load_file(MKIt::Config.config_file)
-      if cfg.nil? || cfg['mkit'].nil? || cfg['mkit']['clients'].nil? || !cfg['mkit']['clients'].include?(api_key)
+      if cfg.nil? || cfg['mkit'].nil? || cfg['mkit']['clients'].nil? || !cfg['mkit']['clients'].map{|h| h['id']}.include?(api_key)
         error 401, 'Unauthorized - please add your api-key to authorized key list'
       end
     end

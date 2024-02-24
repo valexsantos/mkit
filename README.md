@@ -63,8 +63,8 @@ mkit:
   database:
     env: development
   clients:
-    - client_1_id
-    - client_2_id
+    - id: client_1_id
+    - id: client_2_id
     - ...
 ```
 
@@ -95,8 +95,8 @@ mkit:
   my_network:
 ...
   clients:
-    - client_1_id
-    - client_2_id
+    - id: client_1_id
+    - id: client_2_id
     - ...
 ```
 
