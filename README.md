@@ -18,7 +18,7 @@ The daemon is responsible for HAProxy pods routing configuration. It also provid
 * Docker
 * Linux (iproute2 package)
 
-**Note:** in order to have **ssl support**, you must install `openssl-dev` libs (e.g. `libssl-dev`) prior to install MKIt gem.
+**Note:** in order to have **ssl support**, you must install `openssl-dev` package (e.g. `libssl-dev` on Ubuntu) prior to install MKIt gem.
 
 ## Install
 
@@ -160,13 +160,12 @@ After installing the gem, server and client will be available on host.
 Usage: mkitd [options]
     -c config-dir                    set the config dir (default is /etc/mkit)
     -p port                          set the port (default is 4567)
-    -b bind                          specify bind address (e.g. /tmp/app.sock)
-    -s server                        specify rack server/handler
-    -q                               turn on quiet mode (default is off)
-    -x                               turn on the mutex lock (default is off)
+    -b bind                          specify bind address (e.g. 0.0.0.0)
     -e env                           set the environment (default is development)
-    -o addr                          set the host (default is (env == 'development' ? 'localhost' : '0.0.0.0'))
-   
+    -o addr                          alias for '-b' option
+        --no-ssl                     disable ssl - use http for local server. (default is https)
+        --ssl-key-file PATH          Path to private key (default mkit internal)
+        --ssl-cert-file PATH         Path to certificate (default mkit internal)
 ```
 
 There's also samples for [systemd](samples/systemd) and [daemontools](samples/daemontools) as well for some miscellaneous [spps](samples/apps).
@@ -214,6 +213,9 @@ $ mkitc ps
 ```
 The service `mongo` is available on IP `10.210.198.10:27017`
 The service `nexus` is available on IP `10.210.198.11:80` and on port `443` with ssl.
+
+**Note:** Don't forget to call `mkitc init` to initialize client configuration and to add the `client-id`
+to the server authorized clients list.
 
 ## Development
 

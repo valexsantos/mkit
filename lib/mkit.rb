@@ -54,8 +54,8 @@ module MKIt
     # defaults
     @bind = options[:bind] ||= 'localhost'
     @port = options[:port] ||= 4567
-    @ssl = options[:ssl]  ||= true
-    @verify_peer = options[:verify_peer] ||= false
+    @ssl = options[:ssl].nil? ? true : options[:ssl] && true
+    @verify_peer = options[:verify_peer].nil? ? false : options[:verify_peer] && true
     @cert_chain_file = options[:cert_chain_file] ||= "#{@config_dir}/#{MKIt::Utils::MKIT_CRT}"
     @private_key_file = options[:private_key_file] ||= "#{@config_dir}/#{MKIt::Utils::MKIT_KEY}"
 
