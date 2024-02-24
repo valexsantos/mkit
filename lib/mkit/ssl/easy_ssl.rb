@@ -2,19 +2,15 @@ require 'openssl'
 
 module MKIt
   class EasySSL
-    CERTIFICATE_FILE_NAME="mkit_cert.pem"
-    CERTIFICATE_KEY="mkit_key.pem"
-    HAPROXY_CERT="haproxy.pem"
-
     def self.create_self_certificate(cert_dir)
       unless File.exist?("#{cert_dir}/#{MKIt::Utils::MKIT_CRT}")
         key = OpenSSL::PKey::RSA.new 4096
-        name = OpenSSL::X509::Name.parse '/CN=mkit/DC=server'
+        name = OpenSSL::X509::Name.parse '/CN=MKIt/DC=server'
         cert = OpenSSL::X509::Certificate.new
         cert.version = 2
         cert.serial = 0
         cert.not_before = Time.now
-        cert.not_after = Time.now + 6000000
+        cert.not_after = Time.now + 20 * 365 * 24 * 60 * 60
         cert.public_key = key.public_key
         cert.subject = name
         cert.issuer = name

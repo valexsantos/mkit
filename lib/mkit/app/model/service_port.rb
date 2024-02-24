@@ -43,8 +43,8 @@ class ServicePort < ActiveRecord::Base
     self.crt = ports[7].nil? ? MKIt::Utils.proxy_cert : ports[7]
   end
 
-  def ssl
-    super == 'true'
+  def ssl?
+    self.ssl == 'true'
   end
   def load_balance
     case self.load_bal

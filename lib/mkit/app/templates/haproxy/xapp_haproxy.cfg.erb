@@ -6,7 +6,7 @@
 # start <%=name%>-<%=port.external_port%>
 #
 frontend <%=name%>-<%=port.external_port%>-front
-  bind <%=lease.ip%>:<%=port.external_port%> <%=if port.ssl == true then "ssl crt #{port.crt}" end%>
+  bind <%=lease.ip%>:<%=port.external_port%> <%=if port.ssl? then "ssl crt #{port.crt}" end%>
   mode <%=port.mode%>
   #
   use_backend <%=name%>-<%=port.external_port%>-back

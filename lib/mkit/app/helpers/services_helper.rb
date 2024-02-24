@@ -32,13 +32,13 @@ module MKIt
     def build_port(p)
       case p.mode
       when 'http'
-        if p.ssl == true
+        if p.ssl?
           "#{p.mode}s/#{p.external_port}"
         else
           "#{p.mode}/#{p.external_port}"
         end
       when 'tcp'
-        if p.ssl == true
+        if p.ssl?
           "s#{p.mode}/#{p.external_port}"
         else
           "#{p.mode}/#{p.external_port}"
