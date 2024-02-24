@@ -2,7 +2,7 @@
 
 This is micro kubernetes(tm) on Ruby(tm), a simple tool to deploy containers to mimic a (very) minimalistic k8 cluster with a nice REST API.
 
-It's also a frontend for `docker`, making it an easier way for your services to be locally available, without the need to care about local `ports` availability.
+It's also a frontend for `docker`, providing an easier way for your services to be locally available, without the need to care about local `ports` availability.
 
 It contains an internal DNS and uses HAProxy for routing/balancing/fail-over for Pods access.
 The database is a simple sqlite3 db and the server is a Sinatra based application.
@@ -22,7 +22,7 @@ The daemon is responsible for HAProxy pods routing configuration. It also provid
 
 ## Install
 
-This is a simple ruby gem, so to install run
+This is a simple ruby gem, so to install execute:
 ```
 # gem install mkit
 ```
@@ -31,7 +31,7 @@ This is a simple ruby gem, so to install run
 
 ### Server configuration
 
-On startup, [configuration](config) will be created on `/etc/mkit`.
+On startup, [the server configuration](config) will be created on `/etc/mkit`.
 
 The server will available by default on `https://localhost:4567` but you can configure server startup parameters on `/etc/mkit/mkitd_config.sh`
 
@@ -68,7 +68,7 @@ mkit:
     - ...
 ```
 
-You must configure `haproxy` to use config directory. e.g. on Ubuntu
+You must configure `haproxy` to use config directory. for example on Ubuntu:
 
 ```
 # /etc/default/haproxy
@@ -154,7 +154,7 @@ service:
 ## Running
 
 The `mkitd server daemon` requires `root` user (due to `ip` and `haproxy`).
-After installing the gem, the server and client will be available on host.
+After installing the gem, server and client will be available on host.
 ```
 # mkitd  --help
 Usage: mkitd [options]
@@ -169,7 +169,7 @@ Usage: mkitd [options]
    
 ```
 
-There's also samples on the samples dir, for [systemd](samples/systemd) and [daemontools](samples/daemontools) as well for some miscellaneous [spps](samples/apps).
+There's also samples for [systemd](samples/systemd) and [daemontools](samples/daemontools) as well for some miscellaneous [spps](samples/apps).
 
 ### Accessing the API
 
@@ -204,7 +204,7 @@ Run 'mkitc help <command>' for specific command information.
 Example:
 
 ```
-$ mkitc ps postgres
+$ mkitc ps
 +----+-------+---------------+-------------------+--------------+---------+
 | id | name  |     addr      |       ports       |     pods     | status  |
 +----+-------+---------------+-------------------+--------------+---------+
