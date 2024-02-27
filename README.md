@@ -4,7 +4,7 @@ This is micro kubernetes(tm) on Ruby(tm), a simple tool to deploy containers to 
 
 It's also a frontend for `docker`, providing an easier way for your services to be locally available, without the need to care about local `ports` availability.
 
-It contains an internal DNS and uses HAProxy for routing/balancing/fail-over for Pods access.
+It contains an internal DNS and uses HAProxy as ingress for Pod access.
 The database is a simple sqlite3 db and the server is a Sinatra based application.
 
 A client is also included to access the API, e.g. `mkitc ps`.
@@ -18,7 +18,7 @@ The daemon is responsible for HAProxy pods routing configuration. It also provid
 * Docker
 * Linux (iproute2 package)
 
-**Note:** in order to have **ssl support**, you must install `openssl-dev` package (e.g. `libssl-dev` on Ubuntu) prior to install MKIt gem.
+**Note:** in order to have **ssl support**, you must install `openssl-dev` package (e.g. `libssl-dev` on Ubuntu) prior to install MKIt gem, due to `eventmachine` gem native extensions.
 
 ## Install
 

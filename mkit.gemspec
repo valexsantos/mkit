@@ -35,4 +35,5 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'sqlite3', '~> 1.5', '>= 1.5.4'
   s.add_runtime_dependency 'standalone_migrations', '~> 7.1', '>= 7.1.0'
   s.add_runtime_dependency 'thin', '~> 1.8', '>= 1.8.1'
+  s.add_runtime_dependency 'text-table', '~> 1.2', '>= 1.2.4'
 end
