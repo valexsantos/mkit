@@ -9,5 +9,5 @@ $LOAD_PATH.unshift File.expand_path('lib')
 ENV['SINATRA_ENV'] ||= "development"
 ENV['RACK_ENV'] ||= "development"
 
-load 'bin/mkitd'
+load 'bin/mkit'
 

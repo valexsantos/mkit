@@ -126,7 +126,7 @@ DEPENDENCIES
   net-ping
   net_http_unix
   pry
-  rack (>= 2.0.6)
+  rack (>= 2.2.6)
   rake
   rubydns
   sinatra

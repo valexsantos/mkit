@@ -1,0 +1,142 @@
+---
+- :cmd: init
+  :help: init mkit client
+  :request: {}
+- :cmd: ps
+  :args:
+  - :name: id
+    :mandatory: false
+    :uri: "/<%=id%>"
+  :help: show services status (alias for status)
+  :usage:
+  - "[service_id_or_name]"
+  :request:
+    :verb: :get
+    :uri: "/services"
+- :cmd: status
+  :args:
+  - :name: id
+    :mandatory: false
+    :uri: "/<%=id%>"
+  :help: show services status
+  :usage:
+  - "[service_id_or_name]"
+  :request:
+    :verb: :get
+    :uri: "/services"
+- :cmd: logs
+  :args:
+  - :name: id
+    :mandatory: true
+  :help: prints service logs
+  :usage:
+  - "<service_id_or_name>"
+  :request:
+    :verb: :get
+    :uri: "/services/<%=id%>/logs"
+- :cmd: start
+  :args:
+  - :name: id
+    :mandatory: true
+  :help: start service
+  :usage:
+  - "<service_id_or_name>"
+  :request:
+    :verb: :put
+    :uri: "/services/<%=id%>/start"
+- :cmd: stop
+  :args:
+  - :name: id
+    :mandatory: true
+  :help: stop service
+  :usage:
+  - "<service_id_or_name>"
+  :request:
+    :verb: :put
+    :uri: "/services/<%=id%>/stop"
+- :cmd: restart
+  :args:
+  - :name: id
+    :mandatory: true
+  :help: restart service
+  :usage:
+  - "<service_id_or_name>"
+  :request:
+    :verb: :put
+    :uri: "/services/<%=id%>/restart"
+- :cmd: create
+  :args:
+  - :name: file
+    :mandatory: true
+  :help: create new service
+  :usage:
+  - "<service.yaml>"
+  :request:
+    :verb: :post
+    :uri: "/services"
+- :cmd: update
+  :args:
+  - :name: file
+    :mandatory: true
+  :help: update service
+  :usage:
+  - "<service.yaml>"
+  :request:
+    :verb: :put
+    :uri: "/services/<%=id%>"
+- :cmd: rm
+  :args:
+  - :name: id
+    :mandatory: true
+  :help: remove service
+  :usage:
+  - "<service_id_or_name>"
+  :request:
+    :verb: :delete
+    :uri: "/services/<%=id%>"
+- :cmd: version
+  :help: prints mkit server version
+  :request:
+    :verb: :get
+    :uri: "/mkit/version"
+- :cmd: proxy
+  :options:
+  - :cmd: start
+    :request:
+      :verb: :put
+      :uri: "/mkit/proxy/start"
+    :help: start proxy service
+  - :cmd: stop
+    :request:
+      :verb: :put
+      :uri: "/mkit/proxy/stop"
+    :help: stop proxy service
+  - :cmd: restart
+    :request:
+      :verb: :put
+      :uri: "/mkit/proxy/restart"
+    :help: restarts proxy service
+  - :cmd: status
+    :request:
+      :verb: :get
+      :uri: "/mkit/proxy/status"
+    :help: proxy service status
+  :help: haproxy status and control
+  :usage:
+  - "<start|stop|restart|status>"
+- :cmd: profile
+  :options:
+  - :cmd: set
+    :request:
+      :verb: set
+    :args:
+    - :name: profile_name
+      :mandatory: true
+    :help: set mkit client configuration profile
+  - :cmd: show
+    :request:
+      :verb: show
+    :help: show mkit client current profile
+  :help: mkit client configuration profile
+  :usage:
+  - "<[set <profile_name>]|[show]>"
