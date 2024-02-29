@@ -1,9 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-#
-# local devel shortcut util
-#
 $LOAD_PATH.unshift File.expand_path('lib')
 #
 ENV['SINATRA_ENV'] ||= "development"

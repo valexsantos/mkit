@@ -13,7 +13,7 @@ gem 'text-table'
 
 gem 'async-dns'
 gem 'pry'
-gem 'rack', '>= 2.2.6'
+gem 'rack', '>= 2.0.6'
 gem 'rubydns'
 gem 'sinatra-activerecord'
 # rest http server

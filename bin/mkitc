@@ -11,7 +11,6 @@ require 'securerandom'
 require 'erb'
 require 'uri'
 require 'fileutils'
-require 'mkit'
 
 class InvalidParametersException < Exception
   attr_reader :command
@@ -23,16 +22,156 @@ class InvalidParametersException < Exception
 end
 
 class CommandPalette
-
   def schema
-    YAML.load_file("#{MKIt::Utils.root}/lib/mkit/client/command_palette.yaml")
+    global_args = [
+      { short: '-v', long: '--verbose', help: 'verbose', mandatory: false, value: nil }
+    ]
+    [
+      {
+        cmd: 'init',
+        help: 'init mkit client',
+        request: { }
+      },
+      {
+        cmd: 'ps',
+        args: [
+          { name: 'id', mandatory: false, uri: '/<%=id%>' }
+        ],
+        help: 'show services status (alias for status)',
+        usage: ['[service_id_or_name]'],
+        request: { verb: :get, uri: '/services' }
+      },
+      {
+        cmd: 'status',
+        args: [
+          { name: 'id', mandatory: false, uri: '/<%=id%>' }
+        ],
+        help: 'show services status',
+        usage: ['[service_id_or_name]'],
+        request: { verb: :get, uri: '/services' }
+      },
+      {
+        cmd: 'logs',
+        args: [
+          { name: 'id', mandatory: true }
+        ],
+        help: 'prints service logs',
+        usage: ['<service_id_or_name>'],
+        request: { verb: :get, uri: '/services/<%=id%>/logs' }
+      },
+      {
+        cmd: 'start',
+        args: [
+          { name: 'id', mandatory: true }
+        ],
+        help: 'start service',
+        usage: ['<service_id_or_name>'],
+        request: { verb: :put, uri: '/services/<%=id%>/start' }
+      },
+      {
+        cmd: 'stop',
+        args: [
+          { name: 'id', mandatory: true }
+        ],
+        help: 'stop service',
+        usage: ['<service_id_or_name>'],
+        request: { verb: :put, uri: '/services/<%=id%>/stop' }
+      },
+      {
+        cmd: 'restart',
+        args: [
+          { name: 'id', mandatory: true }
+        ],
+        help: 'restart service',
+        usage: ['<service_id_or_name>'],
+        request: { verb: :put, uri: '/services/<%=id%>/restart' }
+      },
+      {
+        cmd: 'create',
+        args: [
+          { name: 'file', mandatory: true }
+        ],
+        help: 'create new service',
+        usage: ['<service.yaml>'],
+        request: { verb: :post, uri: '/services' }
+      },
+      {
+        cmd: 'update',
+        args: [
+          { name: 'file', mandatory: true }
+        ],
+        help: 'update service',
+        usage: ['<service.yaml>'],
+        request: { verb: :put, uri: '/services/<%=id%>' }
+      },
+      {
+        cmd: 'rm',
+        args: [
+          { name: 'id', mandatory: true }
+        ],
+        help: 'remove service',
+        usage: ['<service_id_or_name>'],
+        request: { verb: :delete, uri: '/services/<%=id%>' }
+      },
+      {
+        cmd: 'version',
+        help: 'prints mkit server version',
+        request: { verb: :get, uri: '/mkit/version' }
+      },
+      {
+        cmd: 'proxy',
+        options: [
+          {
+            cmd: 'start',
+            request: { verb: :put, uri: '/mkit/proxy/start' },
+            help: 'start proxy service'
+          },
+          {
+            cmd: 'stop',
+            request: { verb: :put, uri: '/mkit/proxy/stop' },
+            help: 'stop proxy service'
+          },
+          {
+            cmd: 'restart',
+            request: { verb: :put, uri: '/mkit/proxy/restart' },
+            help: 'restarts proxy service'
+          },
+          {
+            cmd: 'status',
+            request: { verb: :get, uri: '/mkit/proxy/status' },
+            help: 'proxy service status'
+          }
+        ],
+        help: 'haproxy status and control',
+        usage: ['<start|stop|restart|status>']
+      },
+      {
+        cmd: 'profile',
+        options: [
+          {
+            cmd: 'set',
+            request: { verb: 'set' },
+            args: [
+              { name: 'profile_name', mandatory: true }
+            ],
+            help: 'set mkit client configuration profile'
+          },
+          {
+            cmd: 'show',
+            request: { verb: 'show' },
+            help: 'show mkit client current profile'
+          }
+        ],
+        help: 'mkit client configuration profile',
+        usage: ['<[set <profile_name>]|[show]>']
+      }
+    ]
   end
-
-
 end
 
 class MKItClient
   def initialize
+    @root = File.expand_path('..', __dir__)
     @config_dir = "#{ENV['HOME']}/.mkit"
     @profile_file = "#{@config_dir}/current"
     @commands = CommandPalette.new
@@ -45,7 +184,7 @@ class MKItClient
       puts "Creating config directory on '#{@config_dir}'..."
       FileUtils.mkdir_p(@config_dir)
     end
-    FileUtils.cp("#{MKIt::Utils.root}/config/mkitc_config.yml", @config_dir) unless File.exist?(@config_file)
+    FileUtils.cp("#{@root}/config/mkitc_config.yml", @config_dir) unless File.exist?(@config_file)
     profile({ verb: 'set' }, { profile_name: 'local' }) unless File.exist?(@profile_file)
   end
 
@@ -64,7 +203,7 @@ class MKItClient
 
     @configuration = cfg['mkit'][current_profile.lstrip]
     if !init_call && cfg['my_id'].nil?
-      raise InvalidParametersException.new("Please run 'mkit init' to initialize mkit client.", find_command('init'))
+      raise InvalidParametersException.new("Please run 'mkitc init' to initialize mkit client.", find_command('init'))
     end
     @my_id = cfg['my_id']
     cfg
@@ -221,16 +360,16 @@ class MKItClient
       my_cmd = cause.command
     end
     if my_cmd.nil?
-      msg += "\nUsage: mkit <command> [options]\n\n"
+      msg += "\nUsage: mkitc <command> [options]\n\n"
       msg += "Micro k8s on Ruby - a simple tool to mimic a (very) minimalistic k8 cluster\n\n"
       msg += "Commands:\n\n"
       dict.each do |c|
         msg += format("%-10s %s\n", c[:cmd], c[:help])
       end
       msg += "\n"
-      msg += "Run 'mkit help <command>' for specific command information.\n\n"
+      msg += "Run 'mkitc help <command>' for specific command information.\n\n"
     else
-      msg += format("\nUsage: mkit %s %s\n\n", my_cmd[:cmd], my_cmd[:usage].nil? ? '' : my_cmd[:usage].join(' '))
+      msg += format("\nUsage: mkitc %s %s\n\n", my_cmd[:cmd], my_cmd[:usage].nil? ? '' : my_cmd[:usage].join(' '))
       msg += format("%s\n", my_cmd[:help])
       unless my_cmd[:options].nil?
         msg += "\nOptions:\n"
@@ -256,7 +395,6 @@ class MKItClient
     end
     puts "Your api-key is #{my_id}"
   end
-
   def create(request, request_hash = nil)
     unless File.file?(request_hash[:file])
       raise InvalidParametersException.new('File not found.', find_command('create'))
