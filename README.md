@@ -7,7 +7,7 @@ It's also a frontend for `docker`, providing an easier way for your services to 
 It contains an internal DNS and uses HAProxy as ingress for Pod access.
 The database is a simple sqlite3 db and the server is a Sinatra based application.
 
-A client is also included to access the API, e.g. `mkitc ps`.
+A client is also included to access the API, e.g. `mkit ps`.
 
 The daemon is responsible for HAProxy pods routing configuration. It also provides the cluster DNS and manages the internal host interface and the docker instances. 
 
@@ -102,22 +102,22 @@ mkit:
 
 ### Client configuration
 
-On `mkitc` first call, default configuration will be copied to `$HOME/.mkit` with `local`default profile set.
+On `mkit` first call, default configuration will be copied to `$HOME/.mkit` with `local`default profile set.
 
-You must call `mkitc init` to initialize client configuration.
+You must call `mkit init` to initialize client configuration.
 
 Client identification key (`my_id`) will be generated, printed out to console and saved to the client's configuration file.
 
-You may edit the local configuration file to add more servers and change active profile with `$mkitc profile set <profile_name>`, e.g. `$mkitc profile set server_2`
+You may edit the local configuration file to add more servers and change active profile with `$mkit profile set <profile_name>`, e.g. `$mkit profile set server_2`
 
 ```
-# ~/.mkit/mkitc_config.yml
+# ~/.mkit/mkit_config.yml
 mkit:
   local: 
     server.uri: https://localhost:4567
-  server_2:  # you can add more servers. change the client active profile with mkitc profile command
+  server_2:  # you can add more servers. change the client active profile with mkit profile command
     server.uri: https://192.168.29.232:4567
-my_id: unique_id # this id is generated running mkitc init
+my_id: unique_id # this id is generated running mkit init
 ```
 
 ### Service
@@ -174,10 +174,10 @@ There's also samples for [systemd](samples/systemd) and [daemontools](samples/da
 
 A client is provided to interact with MKIt server.
 
-Run `mkitc help` for a list of current supported commands.
+Run `mkit help` for a list of current supported commands.
 
 ```
-Usage: mkitc <command> [options]
+Usage: mkit <command> [options]
 
 Micro k8s on Ruby - a simple tool to mimic a (very) minimalistic k8 cluster
 
@@ -197,13 +197,13 @@ version    prints mkit server version
 proxy      haproxy status and control
 profile    mkit client configuration profile
 
-Run 'mkitc help <command>' for specific command information.
+Run 'mkit help <command>' for specific command information.
 ```
 
 Example:
 
 ```
-$ mkitc ps
+$ mkit ps
 +----+-------+---------------+-------------------+--------------+---------+
 | id | name  |     addr      |       ports       |     pods     | status  |
 +----+-------+---------------+-------------------+--------------+---------+
@@ -214,7 +214,7 @@ $ mkitc ps
 The service `mongo` is available on IP `10.210.198.10:27017`
 The service `nexus` is available on IP `10.210.198.11:80` and on port `443` with ssl.
 
-**Note:** Don't forget to call `mkitc init` to initialize client configuration and to add the `client-id`
+**Note:** Don't forget to call `mkit init` to initialize client configuration and to add the `client-id`
 to the server authorized clients list.
 
 ## Development
@@ -223,6 +223,13 @@ to the server authorized clients list.
   * `rake package`
 * console
   * `rake console`
+
+# Contributing
+ * Fork it
+ * Create your feature branch (git checkout -b my-new-feature)
+ * Commit your changes (git commit -am 'Add some feature')
+ * Push to the branch (git push origin my-new-feature)
+ * Create new Pull Request
 
 # Thanks
 
