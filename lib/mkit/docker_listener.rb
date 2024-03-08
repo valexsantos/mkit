@@ -36,9 +36,9 @@ module MKIt
             pod.save
             pod.service.update_status!
           when :kill
-            MKItLogger.debug("	#{type} #{action} <<NOOP / TODO>>")
+            pod.service.update_status!
           when :die
-            MKItLogger.debug("	#{type} #{action} <<NOOP / TODO>>")
+            pod.service.update_status!
           when :stop
             pod.service.update_status!
           else

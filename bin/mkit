@@ -203,7 +203,7 @@ class MKItClient
 
     @configuration = cfg['mkit'][current_profile.lstrip]
     if !init_call && cfg['my_id'].nil?
-      raise InvalidParametersException.new("Please run 'mkitc init' to initialize mkit client.", find_command('init'))
+      raise InvalidParametersException.new("Please run ' mkit init' to initialize mkit client.", find_command('init'))
     end
     @my_id = cfg['my_id']
     cfg
@@ -360,16 +360,16 @@ class MKItClient
       my_cmd = cause.command
     end
     if my_cmd.nil?
-      msg += "\nUsage: mkitc <command> [options]\n\n"
+      msg += "\nUsage: mkit <command> [options]\n\n"
       msg += "Micro k8s on Ruby - a simple tool to mimic a (very) minimalistic k8 cluster\n\n"
       msg += "Commands:\n\n"
       dict.each do |c|
         msg += format("%-10s %s\n", c[:cmd], c[:help])
       end
       msg += "\n"
-      msg += "Run 'mkitc help <command>' for specific command information.\n\n"
+      msg += "Run ' mkit help <command>' for specific command information.\n\n"
     else
-      msg += format("\nUsage: mkitc %s %s\n\n", my_cmd[:cmd], my_cmd[:usage].nil? ? '' : my_cmd[:usage].join(' '))
+      msg += format("\nUsage: mkit %s %s\n\n", my_cmd[:cmd], my_cmd[:usage].nil? ? '' : my_cmd[:usage].join(' '))
       msg += format("%s\n", my_cmd[:help])
       unless my_cmd[:options].nil?
         msg += "\nOptions:\n"

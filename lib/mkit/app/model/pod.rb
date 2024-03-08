@@ -16,10 +16,9 @@ class Pod < ActiveRecord::Base
     new_ip = nil
     tries = 5
     while (new_ip.nil? && tries > 0) do
-        instance = self.properties.to_o
-        new_ip = instance.NetworkSettings.Networks[self.service.pods_network].IPAddress
-        sleep(1) if new_ip.nil?
-        tries = tries - 1
+      new_ip = self.instance.NetworkSettings.Networks[self.service.pods_network].IPAddress
+      sleep(1) if new_ip.nil?
+      tries = tries - 1
     end
     if self.ip != new_ip
       self.ip = new_ip
@@ -40,14 +39,8 @@ class Pod < ActiveRecord::Base
     self.dns_host.save
   end
 
-  def properties
-    inspect_instance(self.name)
-  end
-
   def set_status_from_docker
-    instance = self.properties
-    if self.properties
-      instance = instance.to_o
+    if self.instance
       if instance.State.Running
         self.status = MKIt::Status::RUNNING
       else
@@ -65,30 +58,31 @@ class Pod < ActiveRecord::Base
   end
 
   def start
-    if self.pod_id.nil?
+    if self.instance.nil?
       docker_run = parse
       MKItLogger.info("deploying docker pod, cmd [#{docker_run}]")
       create_instance(docker_run)
     else
-      pre_check
-
-      instance = self.properties.to_o
       start_instance(self.name) unless instance.State.Running
     end
   end
 
   def stop
-    pre_check
-    stop_instance(self.name)
+    stop_instance(self.name) unless self.instance.nil? || !self.instance.State.Running
   end
 
-  def pre_check
-    raise MKIt::PodNotFoundException.new('no pod_name found') if self.name.nil?
-    raise MKIt::PodNotFoundException.new("no properties found for #{self.name}") if self.properties.nil?
+  def instance
+    properties = inspect_instance(self.name)
+    return properties.to_o unless properties.nil?
+    nil
   end
 
   def clean_up
-    remove_instance(self.name) unless self.pod_id.nil?
+    begin
+      remove_instance(self.name) unless self.instance.nil?
+    rescue => e
+      MKItLogger.warn(e)
+    end
     MkitJob.publish(topic: :pod_destroyed, service_id: self.service.id, data: {pod_id: self.id})
   end
 end
