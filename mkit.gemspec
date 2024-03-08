@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
     `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features|TODO|db/development.sqlite)}) }
   end
   s.executables  << 'mkitd'
-  s.executables  << 'mkitc'
+  s.executables  << 'mkit'
   s.add_runtime_dependency 'async-dns', '~> 1.3', '>= 1.3.0'
   s.add_runtime_dependency 'dry-container', '~> 0.9', '>= 0.9.0'
   s.add_runtime_dependency 'net_http_unix',   '~> 0.2', '>= 0.2.2'
