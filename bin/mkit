@@ -360,7 +360,7 @@ class MKItClient
       my_cmd = cause.command
     end
     if my_cmd.nil?
-      msg += "\nUsage:  mkit <command> [options]\n\n"
+      msg += "\nUsage: mkit <command> [options]\n\n"
       msg += "Micro k8s on Ruby - a simple tool to mimic a (very) minimalistic k8 cluster\n\n"
       msg += "Commands:\n\n"
       dict.each do |c|
@@ -369,7 +369,7 @@ class MKItClient
       msg += "\n"
       msg += "Run ' mkit help <command>' for specific command information.\n\n"
     else
-      msg += format("\nUsage:  mkit %s %s\n\n", my_cmd[:cmd], my_cmd[:usage].nil? ? '' : my_cmd[:usage].join(' '))
+      msg += format("\nUsage: mkit %s %s\n\n", my_cmd[:cmd], my_cmd[:usage].nil? ? '' : my_cmd[:usage].join(' '))
       msg += format("%s\n", my_cmd[:help])
       unless my_cmd[:options].nil?
         msg += "\nOptions:\n"
