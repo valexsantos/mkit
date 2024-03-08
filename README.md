@@ -111,7 +111,7 @@ Client identification key (`my_id`) will be generated, printed out to console an
 You may edit the local configuration file to add more servers and change active profile with `$mkit profile set <profile_name>`, e.g. `$mkit profile set server_2`
 
 ```
-# ~/.mkit/mkit_config.yml
+# ~/.mkit/mkitc_config.yml
 mkit:
   local: 
     server.uri: https://localhost:4567
