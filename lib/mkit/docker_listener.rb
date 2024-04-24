@@ -5,15 +5,31 @@ require 'mkit/status'
 # https://docs.docker.com/engine/reference/commandline/events
 require 'mkit/app/helpers/docker_helper'
 module MKIt
+class StopThread < RuntimeError; end
+
   class DockerListener
     include MKIt::DockerHelper
 
     def initialize
-      @consumers = []
+      @queue = Queue.new
     end
 
-    def register_consumer(consumer:)
+    def enqueue(msg)
+      @queue << msg
     end
+
+    def start
+      @consumer.run if register_consumer
+      @listener.run if register_listener
+    end
+
+    def stop
+      @listener.exit if @listener
+      @consumer.raise StopThread.new
+      MKItLogger.info("docker listener stopped")
+    end
+
+    private
 
     def parse_message(msg)
       action = msg['Action'].to_sym
@@ -45,15 +61,17 @@ module MKIt
             MKItLogger.debug("	#{type} #{action} <<TODO>>")
           end
         else
-          MKItLogger.warn("docker <<#{type}>> <#{action}> received: #{msg}. But I don't know anything about pod #{pod_id}")
+          MKItLogger.warn("docker <<#{type}>> <#{action}> received: #{msg}. But I don't know anything about pod #{pod_id}/#{pod_name}")
         end
       when :network
         pod_id = msg.Actor.Attributes.container
-        pod = Pod.find_by(pod_id: pod_id)
+        inspect = inspect_instance(pod_id).to_o
+        pod_name = inspect.Name[1..]
+        pod = Pod.find_by(name: pod_name)
         unless pod.nil?
           case action
           when :connect
-            MKItLogger.info("docker network #{action} received: #{msg}")
+            MKItLogger.info("docker network #{action} received: #{msg} for pod #{pod_name}")
             pod.update_ip
             pod.save
           when :disconnect
@@ -62,20 +80,41 @@ module MKIt
             MKItLogger.debug("  #{type} #{action} <<TODO>>")
           end
         else
-          MKItLogger.warn("docker <<#{type}>> <#{action}> received: #{msg}. But I don't know anything about pod #{pod_id}")
+          MKItLogger.warn("docker <<#{type}>> <#{action}> received: #{msg}. But I don't know anything about pod #{pod_id}/#{pod_name}")
         end
       else
         MKItLogger.info("\t#{type} #{action} <<unknown>>")
       end
     end
 
-    def start
-      @thread ||= Thread.new {
+    def register_consumer
+      return false unless @consumer.nil?
+
+      @consumer = Thread.new do
+        running = true
+        while running
+          begin
+            parse_message(@queue.pop)
+          rescue StopThread
+            running = false
+            MKItLogger.info("docker consumer ended")
+          rescue => e
+            MKItLogger.error("error while consuming docker notification: #{e}", e.message, e.backtrace.join("\n"))
+          end
+        end
+      end
+      true
+    end
+
+    def register_listener
+      return false unless @listener.nil?
+
+      @listener = Thread.new {
         cmd = "docker events --format '{{json .}}'"
         begin
           PTY.spawn( cmd ) do |stdout, stdin, pid|
             begin
-              stdout.each { |line| parse_message JSON.parse(line).to_o }
+              stdout.each { |line| enqueue JSON.parse(line).to_o }
             rescue Errno::EIO
               MKItLogger.warn("Errno:EIO error, but this probably just means " +
                 "that the process has finished giving output")
@@ -85,12 +124,8 @@ module MKIt
           MKItLogger.warn("docker event listener process exited!")
         end
       }
-      @thread.run
       MKItLogger.info("docker listener started")
-    end
-    def stop
-      @thread.exit if @thread
-      MKItLogger.info("docker listener stopped")
+      true
     end
   end
 end
