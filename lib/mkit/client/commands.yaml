@@ -1,0 +1,203 @@
+---
+- cmd: init
+  help: init mkit client
+  request: {}
+- cmd: ps
+  usage:
+    - "[service_id_or_name]"
+  help: show services status (alias for status)
+  args:
+    - name: id
+      help:
+        - id
+        - Service id or name
+      mandatory: false
+      uri: "/<%=id%>"
+  request:
+    verb: get
+    uri: "/services"
+- cmd: status
+  usage:
+    - "[service_id_or_name]"
+  help: show services status
+  args:
+    - name: id
+      help:
+        - id
+        - Service id or name
+      mandatory: false
+      uri: "/<%=id%>"
+  request:
+    verb: get
+    uri: "/services"
+- cmd: start
+  usage:
+    - "<service_id_or_name>"
+  help: start service
+  args:
+    - name: id
+      help:
+        - id
+        - Service id or name
+      mandatory: true
+  request:
+    verb: put
+    uri: "/services/<%=id%>/start"
+- cmd: stop
+  usage:
+    - "<service_id_or_name>"
+  help: stop service
+  args:
+    - name: id
+      help:
+        - id
+        - Service id or name
+      mandatory: true
+  request:
+    verb: put
+    uri: "/services/<%=id%>/stop"
+- cmd: restart
+  usage:
+    - "<service_id_or_name>"
+  help: restart service
+  args:
+    - name: id
+      help:
+        - id
+        - Service id or name
+      mandatory: true
+  request:
+    verb: put
+    uri: "/services/<%=id%>/restart"
+- cmd: create
+  usage:
+    - "<service.yaml>"
+  help: create new service
+  args:
+    - name: file
+      help:
+        - file
+        - Service definition
+      mandatory: true
+  request:
+    verb: post
+    uri: "/services"
+- cmd: update
+  usage:
+    - "<service.yaml>"
+  help: update service
+  args:
+    - name: file
+      help:
+        - file
+        - Service definition
+      mandatory: true
+  request:
+    verb: put
+    uri: "/services/<%=id%>"
+- cmd: rm
+  usage:
+    - "<service_id_or_name>"
+  help: remove service
+  args:
+    - name: id
+      help:
+        - id
+        - Service id or name
+      mandatory: true
+  request:
+    verb: delete
+    uri: "/services/<%=id%>"
+- cmd: logs
+  usage:
+    - "<service_id_or_name> [-f] [-n <lines>]"
+  help: view service logs
+  request:
+    verb: ws # new type
+    uri: "/services/<%=id%>/logs"
+  args:
+    - name: id
+      mandatory: true
+      # uri: "/<%=id%>" # if exists, add it to main
+      type: value # option | flag | value # option takes a value, flag does not takes a value, value is like id_or_name
+      help:
+        - id
+        - Service id or name
+    - name: follow
+      help:
+        - -f
+        - Follow log output
+      mandatory: false
+      param: "<%=true%>" # templated. param ou uri - param -> add query parameter name=param_value
+      type: flag
+      switch:
+        - "-f"
+    - name: nr_lines
+      help:
+        - -n <lines>
+        - Number of lines to show from the end of the logs
+      mandatory: false
+      param: "<%=nr_lines%>"
+      type: option
+      switch:
+        - "-n"
+    - name: pods
+      help:
+        - -p <[pods]>
+        - Show logs for specified logs, e.g. pod1, pod2 (default first)
+      mandatory: false
+      param: "<%=pods%>"
+      type: option
+      switch:
+        - "-n"
+- cmd: version
+  help: prints mkit server version
+  request:
+    verb: get
+    uri: "/mkit/version"
+- cmd: proxy
+  usage:
+    - "<start|stop|restart|status>"
+  help: haproxy status and control
+  options:
+    - cmd: start
+      help: start proxy service
+      request:
+        verb: put
+        uri: "/mkit/proxy/start"
+    - cmd: stop
+      help: stop proxy service
+      request:
+        verb: put
+        uri: "/mkit/proxy/stop"
+    - cmd: restart
+      help: restarts proxy service
+      request:
+        verb: put
+        uri: "/mkit/proxy/restart"
+    - cmd: status
+      help: proxy service status
+      request:
+        verb: get
+        uri: "/mkit/proxy/status"
+- cmd: profile
+  usage:
+    - "<[set <profile_name>]|[show]>"
+  help: mkit client configuration profile
+  options:
+    - cmd: set
+      help: set mkit client configuration profile
+      usage:
+        - "<profile>"
+      request:
+        verb: set
+      args:
+        - name: profile
+          help:
+            - profile
+            - profile name
+          mandatory: true
+    - cmd: show
+      help: show mkit client current profile
+      request:
+        verb: show

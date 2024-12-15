@@ -1,5 +1,6 @@
 require 'pty'
 require 'mkit/status'
+require "mkit/cmd/shell_client"
 
 #
 # https://docs.docker.com/engine/reference/commandline/events
@@ -12,6 +13,7 @@ class StopThread < RuntimeError; end
 
     def initialize
       @queue = Queue.new
+      @listener = ShellClient.new(command: "docker events --format '{{json .}}'")
     end
 
     def enqueue(msg)
@@ -20,11 +22,11 @@ class StopThread < RuntimeError; end
 
     def start
       @consumer.run if register_consumer
-      @listener.run if register_listener
+      register_listener
     end
 
     def stop
-      @listener.exit if @listener
+      @listener.unregister if @listener
       @consumer.raise StopThread.new
       MKItLogger.info("docker listener stopped")
     end
@@ -107,25 +109,9 @@ class StopThread < RuntimeError; end
     end
 
     def register_listener
-      return false unless @listener.nil?
-
-      @listener = Thread.new {
-        cmd = "docker events --format '{{json .}}'"
-        begin
-          PTY.spawn( cmd ) do |stdout, stdin, pid|
-            begin
-              stdout.each { |line| enqueue JSON.parse(line).to_o }
-            rescue Errno::EIO
-              MKItLogger.warn("Errno:EIO error, but this probably just means " +
-                "that the process has finished giving output")
-            end
-          end
-        rescue PTY::ChildExited
-          MKItLogger.warn("docker event listener process exited!")
-        end
-      }
-      MKItLogger.info("docker listener started")
-      true
+      @listener.register do |stdout, stdin, pid|
+        stdout.each { |line| enqueue JSON.parse(line).to_o }
+      end
     end
   end
 end

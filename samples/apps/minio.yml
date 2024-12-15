@@ -11,6 +11,6 @@ service:
     MINIO_ACCESS_KEY: minio
     MINIO_SECRET_KEY: minio123
   volumes:
-    #- docker://minio_data:/data
-    - /tmp/minio_data:/data
+    - docker://minio_data:/data
+    #- /tmp/minio_data:/data
 

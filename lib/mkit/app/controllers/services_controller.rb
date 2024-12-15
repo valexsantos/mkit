@@ -2,6 +2,7 @@
 
 require 'mkit/app/model/service'
 require 'mkit/app/helpers/services_helper'
+require 'mkit/docker_log_listener'
 
 class ServicesController < MKIt::Server
   helpers MKIt::ServicesHelper
@@ -33,7 +34,33 @@ class ServicesController < MKIt::Server
 
   get '/services/:id/logs' do
     srv = find_by_id_or_name
-    srv.log
+    if !request.websocket?
+      srv.log
+    else
+      options_parameter = build_options_hash(params: params, options: [:nr_lines, :pods, :follow])
+      request.websocket do |ws|
+        listener = nil
+        ws.onopen do
+          settings.sockets << ws
+          ws.send("<<<< %s | %s >>>>\n" % [srv.name, srv.pod.first.name])
+          listener = MKIt::DockerLogListener.new(srv.pod.first, ws, options: options_parameter)
+          settings.listeners << listener
+          listener.register
+        end
+        ws.onmessage do |msg|
+          puts msg
+        end
+        ws.onclose do
+          MKItLogger.info("websocket closed [#{listener}]")
+          settings.sockets.delete(ws)
+          if listener
+            MKItLogger.info("unregister [#{listener}]")
+            settings.listeners.delete(listener)
+            listener.unregister
+          end
+        end
+      end
+    end
   end
 
   # curl -X PUT localhost:4567/services/1  -F "file=@mkit/samples/mkit.yml"

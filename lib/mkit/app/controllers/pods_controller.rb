@@ -18,12 +18,6 @@ class PodsController < MKIt::Server
   end
 
   post '/services/:service_id/pods' do
-    xx = 'no file'
-    if params[:file]
-      tempfile = params[:file][:tempfile]
-      xx = YAML.safe_load(tempfile.read)
-      puts xx
-    end
-    JSON.pretty_generate(JSON.parse(xx.to_json))
+    "Not implemented\n"
   end
 end
