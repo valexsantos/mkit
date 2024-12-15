@@ -183,21 +183,21 @@ Micro k8s on Ruby - a simple tool to mimic a (very) minimalistic k8 cluster
 
 Commands:
 
-init       init mkit client
-ps         show services status (alias for status)
-status     show services status
-logs       prints service logs
-start      start service
-stop       stop service
-restart    restart service
-create     create new service
-update     update service
-rm         remove service
-version    prints mkit server version
-proxy      haproxy status and control
-profile    mkit client configuration profile
+init         init mkit client
+ps           show services status (alias for status)
+status       show services status
+start        start service
+stop         stop service
+restart      restart service
+create       create new service
+update       update service
+rm           remove service
+logs         view service logs
+version      prints mkit server version
+proxy        haproxy status and control
+profile      mkit client configuration profile
 
-Run 'mkit help <command>' for specific command information.
+Run ' mkit help <command>' for specific command information.
 ```
 
 Example:
