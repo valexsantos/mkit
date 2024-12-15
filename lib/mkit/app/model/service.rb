@@ -241,7 +241,6 @@ class Service < ActiveRecord::Base
     out = ""
     self.pod.each { |p|
       out << "<<<< %s | %s >>>>\n" % [self.name, p.name]
-      puts logs(p.name)
       out << logs(p.name)
     }
     out

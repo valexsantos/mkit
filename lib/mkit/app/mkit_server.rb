@@ -8,6 +8,8 @@ module MKIt
     set :dump_errors, true
     set :show_exceptions, false
     set :raise_errors, false
+    set :sockets, []
+    set :listeners, []
 
     before do
       api_key = request.env['HTTP_X_API_KEY']

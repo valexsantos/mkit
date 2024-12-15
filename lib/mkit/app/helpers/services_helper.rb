@@ -16,6 +16,13 @@ module MKIt
       table.to_s
     end
 
+    def build_options_hash(params:, options:)
+      hash = {}
+      options.each do |option|
+        hash[option] = params[option]
+      end
+      hash
+    end
     def find_by_id_or_name
       srv = Service.find_by_id(params[:id])
       srv ||= Service.find_by_name(params[:id])
