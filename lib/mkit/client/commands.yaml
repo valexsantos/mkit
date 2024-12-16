@@ -134,8 +134,8 @@
         - "-f"
     - name: nr_lines
       help:
-        - -n <NUM>
-        - Output the last NUM lines (default 10)
+        - -n <string>
+        - Number of lines to show from the end of the logs (default 10)
       mandatory: false
       param: "<%=nr_lines%>"
       type: option
