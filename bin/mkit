@@ -42,14 +42,14 @@ class MKItClient
       FileUtils.mkdir_p(@config_dir)
     end
     FileUtils.cp("#{@root}/config/mkitc_config.yml", @config_dir) unless File.exist?(@config_file)
-    profile({ verb: 'set' }, { profile_name: 'local' }) unless File.exist?(@profile_file)
+    profile({ verb: 'set' }, { profile: 'local' }) unless File.exist?(@profile_file)
   end
 
   def read_configuration(init_call = false)
     current_profile = File.read(@profile_file)
     if current_profile.nil? || current_profile.empty?
       # force set default
-      profile({ verb: 'set' }, { profile_name: 'local' })
+      profile({ verb: 'set' }, { profile: 'local' })
       current_profile = 'local'
     end
     cfg = YAML.load_file(@config_file)
@@ -146,13 +146,13 @@ class MKItClient
 
     case request[:verb]
     when 'set'
-      profile = request_data[:profile_name]
+      profile = request_data[:profile]
       if cfg['mkit'][profile.lstrip].nil?
         raise InvalidParametersException.new("Profile not found on '~/.mkit' configuration", cmd)
       end
 
       puts "Setting current profile to #{profile}."
-      File.write(@profile_file, request_data[:profile_name])
+      File.write(@profile_file, request_data[:profile])
       ''
     when 'show'
       active = File.read("#{@config_dir}/current")

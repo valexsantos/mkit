@@ -9,6 +9,7 @@ module MKIt
       command = "docker logs"
       command += " -f" if options[:follow] == 'true'
       command += " -n #{options[:nr_lines]}" if options[:nr_lines]
+      command += " -n 10" unless options[:nr_lines]
       command += " #{@pod.name}"
       super(command: command)
     end
