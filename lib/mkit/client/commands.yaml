@@ -134,8 +134,8 @@
         - "-f"
     - name: nr_lines
       help:
-        - -n <lines>
-        - Number of lines to show from the end of the logs
+        - -n <string>
+        - Number of lines to show from the end of the logs (default 10)
       mandatory: false
       param: "<%=nr_lines%>"
       type: option
@@ -144,7 +144,7 @@
     - name: pods
       help:
         - -p <[pods]>
-        - Show logs for specified logs, e.g. pod1, pod2 (default first)
+        - Show logs for specified pods, e.g. pod1, pod2 (default first)
       mandatory: false
       param: "<%=pods%>"
       type: option
@@ -182,7 +182,7 @@
         uri: "/mkit/proxy/status"
 - cmd: profile
   usage:
-    - "<[set <profile_name>]|[show]>"
+    - "<[set <profile>]|[show]>"
   help: mkit client configuration profile
   options:
     - cmd: set
