@@ -18,12 +18,12 @@ module MKIt
       super do |stdout, stdin, pid|
         begin
           @stdout_thread = Thread.new do
-            stdout.each { |line| @ws.send(line.strip!) }
+            stdout.each_char { |line| @ws.send(line) }
           end
 
           @stdin_thread = Thread.new do
             @ws.onmessage do |msg|
-              stdin.puts msg
+              stdin.putc msg
             end
           end
           @stdout_thread.join

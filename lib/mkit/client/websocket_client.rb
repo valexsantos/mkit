@@ -2,8 +2,7 @@
 require 'faye/websocket'
 require 'eventmachine'
 require 'json'
-require 'pty'
-require 'pry'
+require 'io/console'
 
 module MKIt
   class WebSocketClient
@@ -34,11 +33,11 @@ module MKIt
         ws = Faye::WebSocket::Client.new(uri, nil, @options)
 
         ws.on :open do |_event|
-          # start_shell(ws)
+          puts "Connected to WebSocket server"
         end
 
         ws.on :message do |event|
-          puts event.data.chomp
+          print event.data
         end
 
         ws.on :error do |event|
@@ -53,14 +52,16 @@ module MKIt
         end
 
         Thread.new do
-          loop do
-            input = STDIN.gets.chomp
-            if input == 'exit'
-              puts "bye..."
-              EventMachine.stop
-              break
-            else
-              ws.send(input)
+          STDIN.raw do
+            loop do
+              input = STDIN.getc.chr
+              if input == "\u0003" # Ctrl+C
+                puts "bye..."
+                EventMachine.stop
+                break
+              else
+                ws.send(input)
+              end
             end
           end
         end
