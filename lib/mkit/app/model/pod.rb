@@ -32,7 +32,7 @@ class Pod < ActiveRecord::Base
   def update_dns
     self.dns_host ||= DnsHost.new(
       service: self.service,
-      name:    "#{name}.#{self.service.name}",
+      name:    "#{self.service.name}.internal",
       ip:      self.ip
     )
     self.dns_host.ip = self.ip

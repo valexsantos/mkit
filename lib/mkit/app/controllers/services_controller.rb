@@ -2,10 +2,12 @@
 
 require 'mkit/app/model/service'
 require 'mkit/app/helpers/services_helper'
-require 'mkit/docker_log_listener'
+require 'mkit/app/helpers/params_helper'
+require 'mkit/pods/docker_log_listener'
 
 class ServicesController < MKIt::Server
   helpers MKIt::ServicesHelper
+  helpers MKIt::ParamsHelper
 
   # curl localhost:4567/services
   get '/services' do

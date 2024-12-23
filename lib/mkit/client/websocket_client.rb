@@ -2,9 +2,12 @@
 require 'faye/websocket'
 require 'eventmachine'
 require 'json'
+require 'pty'
+require 'pry'
 
 module MKIt
   class WebSocketClient
+
     def initialize(server_url, my_id)
       @server_url = server_url
       @my_id = my_id
@@ -26,25 +29,25 @@ module MKIt
         uri = uri + '?' + request[:params].map { |k, v| "#{k}=#{v}" }.join('&')
       end
       uri = ERB.new("#{@ws_url}#{uri}").result_with_hash(request_data)
-      
-      EM.run {
-        ws = Faye::WebSocket::Client.new(uri, nil, @options) 
 
-        ws.on :open do |event|
-          # no op
+      EM.run {
+        ws = Faye::WebSocket::Client.new(uri, nil, @options)
+
+        ws.on :open do |_event|
+          # start_shell(ws)
         end
 
         ws.on :message do |event|
-          puts event.data
+          puts event.data.chomp
         end
 
         ws.on :error do |event|
           p [:error, event.message]
           ws = nil
-          return
+          EventMachine.stop
         end
 
-        ws.on :close do |event|
+        ws.on :close do |_event|
           ws = nil
           EventMachine.stop
         end
@@ -56,6 +59,8 @@ module MKIt
               puts "bye..."
               EventMachine.stop
               break
+            else
+              ws.send(input)
             end
           end
         end

@@ -1,4 +1,39 @@
 ---
+- cmd: exec
+  usage:
+    - "<pod_id> [options] -- <command> [command args]"
+  help: Execute a command in a running pod
+  request:
+    verb: ws
+    uri: "/pods/<%=id%>/exec"
+  args:
+    - name: id # why not simply pod_id?
+      help:
+        - id
+        - Pod id
+      mandatory: true
+    - name: detached
+      help:
+        - -d
+        - Run command in the background
+      mandatory: false
+      param: "<%=true%>"
+      type: flag
+      switch:
+        - "-d"
+    - name: separator
+      help:
+        - --
+        - Ends mkit options and starts the command
+      mandatory: false
+      type: separator
+    - name: varargs
+      help:
+        - command
+        - Command and options
+      mandatory: false
+      type: varargs
+      param: <%=varargs%>
 - cmd: init
   help: init mkit client
   request: {}

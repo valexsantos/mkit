@@ -71,10 +71,24 @@ class CommandParser
   # request_data = {}
   def fill_cmd_args(args, argv, request, request_data)
     return if args.nil?
-    # add to schema
     args.each do |arg|
       arg[:type] = 'value' unless arg[:type]
     end
+    split = split_argv(argv)
+    argv = split[0]
+    varargs = split[1]
+    puts "argv: #{argv}"
+    puts "varargs: #{varargs}"
+    # find vararg and fill it
+    vararg = args.select { |arg| arg[:type].to_sym == :varargs }.first
+    puts "vararg: #{vararg}"
+    if vararg
+      request_data[vararg[:name].to_sym] = varargs
+      request[:params] ||= []
+      request[:params] << ["#{vararg[:name].to_sym}",  varargs ]
+      # fill_params_and_uri(vararg, request)
+    end
+
     # flag and options
     fill_flag_and_options_args(args, argv, request, request_data)
     idx = 0
@@ -86,6 +100,18 @@ class CommandParser
 
       idx += 1
     end
+  end
+
+  def split_argv(argv)
+    separator_index = argv.index('--')
+    if separator_index
+      left_side = argv[0...separator_index]
+      right_side = argv[(separator_index + 1)..-1]
+    else
+      left_side = argv
+      right_side = []
+    end
+    [left_side, right_side]
   end
 
   def fill_flag_and_options_args(args, argv, request, request_data)
@@ -122,7 +148,7 @@ class CommandParser
     request[:uri] = request[:uri] + arg[:uri] unless arg[:uri].nil?
     unless arg[:param].nil?
       request[:params] ||= []
-      request[:params] << [ "#{arg[:name]}", "#{arg[:param]}"]
+      request[:params] << %W[#{arg[:name]} #{arg[:param]}]
     end
   end
 

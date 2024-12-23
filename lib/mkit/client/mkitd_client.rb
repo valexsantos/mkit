@@ -14,6 +14,8 @@ module MKIt
     end
 
     def request(request, request_data)
+      puts "Request: #{request}"
+      puts "Request data: #{request_data}"
       @client.request(request, request_data)
     end 
   end

@@ -13,6 +13,7 @@ require 'uri'
 require 'fileutils'
 require 'mkit/client/command_parser'
 require 'mkit/client/mkitd_client'
+require 'mkit/version'
 
 class InvalidConfigurationException < Exception
   attr_reader :command
@@ -91,6 +92,10 @@ class MKItClient
     client.request(request, request_data)
   end
 
+  def version(request, request_data)
+    puts "MKIt Client version #{MKIt::VERSION}"
+    request(request, request_data)
+  end
   #
   # commands
   #
