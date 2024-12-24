@@ -222,6 +222,11 @@ class Service < ActiveRecord::Base
     MkitJob.publish(topic: :destroy_proxy_config, data: {filename: filename})
   end
 
+  def find_pod_by_id_or_name(pod_id)
+    pod = self.pod.find_by(id: pod_id)
+    pod = self.pod.find_by(name: pod_id) unless pod
+    pod
+  end
   #
   # ctrl
   #

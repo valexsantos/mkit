@@ -108,9 +108,53 @@
   request:
     verb: delete
     uri: "/services/<%=id%>"
+- cmd: exec
+  usage:
+    - "<service_id_or_name> [options] -- <command> [args...]"
+  help: execute a command in a running pod
+  request:
+    verb: ws_console
+    uri: "/services/<%=id%>/pods/exec"
+  args:
+    - name: id
+      help:
+        - id
+        - Service id or name
+      mandatory: true
+    - name: pod_id
+      help:
+        - -p <pod_id>
+        - Execute command for specified pod (default first)
+      mandatory: false
+      param: "<%=pod_id%>"
+      type: option
+      switch:
+        - "-p"
+    - name: detached
+      help:
+        - -d
+        - Run command in background
+      mandatory: false
+      param: "<%=true%>"
+      type: flag
+      switch:
+        - "-d"
+    - name: separator
+      help:
+        - --
+        - Ends mkit options and starts the command
+      mandatory: false
+      type: separator
+    - name: varargs
+      help:
+        - command
+        - Command and options
+      mandatory: true
+      type: varargs
+      param: <%=varargs%>
 - cmd: logs
   usage:
-    - "<service_id_or_name> [-f] [-n <lines>]"
+    - "<service_id_or_name> [-p <pod_id>] [-f] [-n <lines>]"
   help: view service logs
   request:
     verb: ws # new type
@@ -123,6 +167,15 @@
       help:
         - id
         - Service id or name
+    - name: pod_id
+      help:
+        - -p <pod_id>
+        - Show logs for specified pod (default first)
+      mandatory: false
+      param: "<%=pod_id%>"
+      type: option
+      switch:
+        - "-p"
     - name: follow
       help:
         - -f
@@ -141,17 +194,8 @@
       type: option
       switch:
         - "-n"
-    - name: pods
-      help:
-        - -p <[pods]>
-        - Show logs for specified pods, e.g. pod1, pod2 (default first)
-      mandatory: false
-      param: "<%=pods%>"
-      type: option
-      switch:
-        - "-n"
 - cmd: version
-  help: prints mkit server version
+  help: prints mkit client and server version
   request:
     verb: get
     uri: "/mkit/version"

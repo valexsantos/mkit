@@ -16,18 +16,21 @@ module MKIt
       table.to_s
     end
 
-    def build_options_hash(params:, options:)
-      hash = {}
-      options.each do |option|
-        hash[option] = params[option]
-      end
-      hash
-    end
     def find_by_id_or_name
       srv = Service.find_by_id(params[:id])
       srv ||= Service.find_by_name(params[:id])
       error 404, "Couldn't find Service '#{params[:id]}'\n" unless srv
       srv
+    end
+
+    def find_srv_pod_by_id_or_name(srv)
+      if params[:pod_id]
+        pod = srv.find_pod_by_id_or_name(params[:pod_id])
+        error 404, "Service pod not found." unless pod
+      else
+        pod = srv.pod.first
+      end
+      pod
     end
 
     def build_table_row(data)

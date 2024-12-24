@@ -4,7 +4,7 @@ require 'mkit/version'
 
 class MkitController < MKIt::Server
   get '/mkit/version' do
-    "MKIt version #{MKIt::VERSION}\n"
+    "MKIt Server version #{MKIt::VERSION}\n"
   end
 
   put '/mkit/proxy/restart' do

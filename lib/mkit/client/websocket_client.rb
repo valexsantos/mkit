@@ -2,9 +2,13 @@
 require 'faye/websocket'
 require 'eventmachine'
 require 'json'
+require 'io/console'
+require 'mkit/client/console_websocket_client'
+require 'mkit/client/log_websocket_client'
 
 module MKIt
   class WebSocketClient
+
     def initialize(server_url, my_id)
       @server_url = server_url
       @my_id = my_id
@@ -14,10 +18,6 @@ module MKIt
       @options[:headers] = { 'X-API-KEY' => @my_id }
       url_prefix = use_ssl ? "wss" : "ws"
       @ws_url = "#{url_prefix}://#{uri.host}:#{uri.port}"
-      trap("SIGINT") do
-        puts "Bye..."
-        EventMachine.stop
-      end
     end
 
     def request(request, request_data)
@@ -26,40 +26,15 @@ module MKIt
         uri = uri + '?' + request[:params].map { |k, v| "#{k}=#{v}" }.join('&')
       end
       uri = ERB.new("#{@ws_url}#{uri}").result_with_hash(request_data)
-      
-      EM.run {
-        ws = Faye::WebSocket::Client.new(uri, nil, @options) 
 
-        ws.on :open do |event|
-          # no op
-        end
+      case request[:verb].to_sym
+      when :ws_console
+        client = ConsoleWebSocketClient.new(uri, @options)
+      when :ws
+        client = LogWebSocketClient.new(uri, @options)
+      end
+      client.doIt
 
-        ws.on :message do |event|
-          puts event.data
-        end
-
-        ws.on :error do |event|
-          p [:error, event.message]
-          ws = nil
-          return
-        end
-
-        ws.on :close do |event|
-          ws = nil
-          EventMachine.stop
-        end
-
-        Thread.new do
-          loop do
-            input = STDIN.gets.chomp
-            if input == 'exit'
-              puts "bye..."
-              EventMachine.stop
-              break
-            end
-          end
-        end
-      }
     end
   end
 end

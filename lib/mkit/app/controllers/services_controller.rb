@@ -2,10 +2,13 @@
 
 require 'mkit/app/model/service'
 require 'mkit/app/helpers/services_helper'
-require 'mkit/docker_log_listener'
+require 'mkit/app/helpers/params_helper'
+require 'mkit/pods/docker_log_listener'
+require 'mkit/pods/docker_exec_command'
 
 class ServicesController < MKIt::Server
   helpers MKIt::ServicesHelper
+  helpers MKIt::ParamsHelper
 
   # curl localhost:4567/services
   get '/services' do
@@ -37,13 +40,14 @@ class ServicesController < MKIt::Server
     if !request.websocket?
       srv.log
     else
+      pod = find_srv_pod_by_id_or_name(srv)
       options_parameter = build_options_hash(params: params, options: [:nr_lines, :pods, :follow])
       request.websocket do |ws|
         listener = nil
         ws.onopen do
           settings.sockets << ws
           ws.send("<<<< %s | %s >>>>\n" % [srv.name, srv.pod.first.name])
-          listener = MKIt::DockerLogListener.new(srv.pod.first, ws, options: options_parameter)
+          listener = MKIt::DockerLogListener.new(pod, ws, options: options_parameter)
           settings.listeners << listener
           listener.register
         end
@@ -114,5 +118,35 @@ class ServicesController < MKIt::Server
     MkitJob.publish(topic: :stop_service, service_id: srv.id)
     MkitJob.publish(topic: :start_service, service_id: srv.id)
     format_response(srv)
+  end
+
+  get '/services/:id/pods/exec' do
+    srv = find_by_id_or_name
+    if request.websocket?
+      pod = find_srv_pod_by_id_or_name(srv)
+      options_parameter = build_options_hash(params: params, options: [:varargs, :interactive, :detached])
+      raise MKIt::BaseException.new(400, "Missing parameters") unless options_parameter[:varargs]
+      options_parameter[:varargs] = JSON.parse(params['varargs'])
+      request.websocket do |ws|
+        listener = nil
+        ws.onopen do
+          settings.sockets << ws
+          listener = MKIt::DockerExecCommand.new(pod, ws, options: options_parameter)
+          settings.listeners << listener
+          listener.register
+        end
+        ws.onclose do
+          MKItLogger.info("websocket closed [#{listener}]")
+          settings.sockets.delete(ws)
+          if listener
+            MKItLogger.info("unregister [#{listener}]")
+            settings.listeners.delete(listener)
+            listener.unregister
+          end
+        end
+      end
+    else
+      raise MKIt::BaseException.new(400, "Bad request")
+    end
   end
 end
