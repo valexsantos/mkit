@@ -1,7 +1,7 @@
 ---
 - cmd: exec
   usage:
-    - "<service_id_or_name> [options] -- <command> [command args]"
+    - "<service_id_or_name> [options] -- <command> [args...]"
   help: Execute a command in a running pod
   request:
     verb: ws_console
@@ -30,15 +30,6 @@
       type: flag
       switch:
         - "-d"
-    - name: interactive
-      help:
-        - -i
-        - Run command in interactive mode
-      mandatory: false
-      param: "<%=true%>"
-      type: flag
-      switch:
-        - "-i"
     - name: separator
       help:
         - --

@@ -8,7 +8,8 @@ module MKIt
       @pod = pod
       @ws = ws
       command = "docker exec"
-      command += " -it" # if options[:interactive]
+      command += " -it" unless options[:detached] == 'true'
+      command += " -d" if options[:detached] == 'true'
       command += " #{@pod.name}"
       command += " #{options[:varargs].join(' ')}" if options[:varargs]
       super(command: command)

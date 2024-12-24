@@ -124,7 +124,7 @@ class ServicesController < MKIt::Server
     srv = find_by_id_or_name
     if request.websocket?
       pod = find_srv_pod_by_id_or_name(srv)
-      options_parameter = build_options_hash(params: params, options: [:varargs])
+      options_parameter = build_options_hash(params: params, options: [:varargs, :interactive, :detached])
       raise MKIt::BaseException.new(400, "Missing parameters") unless options_parameter[:varargs]
       options_parameter[:varargs] = JSON.parse(params['varargs'])
       request.websocket do |ws|
