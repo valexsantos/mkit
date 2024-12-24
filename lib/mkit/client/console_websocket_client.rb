@@ -28,12 +28,12 @@ module MKIt
         ws.on :error do |event|
           p [:error, event.message]
           ws = nil
-          puts "\r\n"
           EventMachine.stop
         end
 
         ws.on :close do |_event|
           ws = nil
+          puts "\r\n"
           EventMachine.stop
         end
 

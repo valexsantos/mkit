@@ -1,48 +1,4 @@
 ---
-- cmd: exec
-  usage:
-    - "<service_id_or_name> [options] -- <command> [args...]"
-  help: Execute a command in a running pod
-  request:
-    verb: ws_console
-    uri: "/services/<%=id%>/pods/exec"
-  args:
-    - name: id
-      help:
-        - id
-        - Service id or name
-      mandatory: true
-    - name: pod_id
-      help:
-        - -p <pod_id>
-        - Execute command for specified pod (default first)
-      mandatory: false
-      param: "<%=pod_id%>"
-      type: option
-      switch:
-        - "-p"
-    - name: detached
-      help:
-        - -d
-        - Run command in background
-      mandatory: false
-      param: "<%=true%>"
-      type: flag
-      switch:
-        - "-d"
-    - name: separator
-      help:
-        - --
-        - Ends mkit options and starts the command
-      mandatory: false
-      type: separator
-    - name: varargs
-      help:
-        - command
-        - Command and options
-      mandatory: true
-      type: varargs
-      param: <%=varargs%>
 - cmd: init
   help: init mkit client
   request: {}
@@ -152,6 +108,50 @@
   request:
     verb: delete
     uri: "/services/<%=id%>"
+- cmd: exec
+  usage:
+    - "<service_id_or_name> [options] -- <command> [args...]"
+  help: execute a command in a running pod
+  request:
+    verb: ws_console
+    uri: "/services/<%=id%>/pods/exec"
+  args:
+    - name: id
+      help:
+        - id
+        - Service id or name
+      mandatory: true
+    - name: pod_id
+      help:
+        - -p <pod_id>
+        - Execute command for specified pod (default first)
+      mandatory: false
+      param: "<%=pod_id%>"
+      type: option
+      switch:
+        - "-p"
+    - name: detached
+      help:
+        - -d
+        - Run command in background
+      mandatory: false
+      param: "<%=true%>"
+      type: flag
+      switch:
+        - "-d"
+    - name: separator
+      help:
+        - --
+        - Ends mkit options and starts the command
+      mandatory: false
+      type: separator
+    - name: varargs
+      help:
+        - command
+        - Command and options
+      mandatory: true
+      type: varargs
+      param: <%=varargs%>
 - cmd: logs
   usage:
     - "<service_id_or_name> [-p <pod_id>] [-f] [-n <lines>]"
@@ -195,7 +195,7 @@
       switch:
         - "-n"
 - cmd: version
-  help: prints mkit server version
+  help: prints mkit client and server version
   request:
     verb: get
     uri: "/mkit/version"
