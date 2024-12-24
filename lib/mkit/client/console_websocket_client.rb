@@ -10,10 +10,6 @@ module MKIt
     def initialize(uri, options)
       @uri = uri
       @options = options
-      trap("SIGINT") do
-        puts "Bye..."
-        EventMachine.stop
-      end
     end
 
     def doIt
@@ -32,12 +28,12 @@ module MKIt
         ws.on :error do |event|
           p [:error, event.message]
           ws = nil
+          puts "\r\n"
           EventMachine.stop
         end
 
         ws.on :close do |_event|
           ws = nil
-          puts "\r\n"
           EventMachine.stop
         end
 
@@ -45,13 +41,13 @@ module MKIt
           STDIN.raw do
             loop do
               input = STDIN.getc.chr
-              if input == "\u0003" # Ctrl+C
-                puts "bye..."
-                EventMachine.stop
-                break
-              else
+              # if input == "\u0003" # Ctrl+C
+              #   puts "bye..."
+              #   EventMachine.stop
+              #   break
+              # else
                 ws.send(input)
-              end
+              # end
             end
           end
         end

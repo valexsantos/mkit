@@ -4,6 +4,7 @@ require 'mkit/app/model/service'
 require 'mkit/app/helpers/services_helper'
 require 'mkit/app/helpers/params_helper'
 require 'mkit/pods/docker_log_listener'
+require 'mkit/pods/docker_exec_command'
 
 class ServicesController < MKIt::Server
   helpers MKIt::ServicesHelper
