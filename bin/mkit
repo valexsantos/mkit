@@ -179,8 +179,3 @@ end
 #
 client = MKItClient.new
 client.doIt(ARGV.dup)
-#
-# if ARGV.any?
-# parse args
-#  host, socket, config file
-# end

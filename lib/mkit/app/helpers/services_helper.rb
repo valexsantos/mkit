@@ -23,6 +23,16 @@ module MKIt
       srv
     end
 
+    def find_srv_pod_by_id_or_name(srv)
+      if params[:pod_id]
+        pod = srv.find_pod_by_id_or_name(params[:pod_id])
+        error 404, "Service pod not found." unless pod
+      else
+        pod = srv.pod.first
+      end
+      pod
+    end
+
     def build_table_row(data)
       ports = data.service_port&.each.map { |p| build_port(p) }.join(',')
       pods = data.pod.each.map { |p| p.name.to_s }.join(' ')

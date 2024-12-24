@@ -77,16 +77,14 @@ class CommandParser
     split = split_argv(argv)
     argv = split[0]
     varargs = split[1]
-    puts "argv: #{argv}"
-    puts "varargs: #{varargs}"
+    varargs = nil if varargs.empty?
+
     # find vararg and fill it
     vararg = args.select { |arg| arg[:type].to_sym == :varargs }.first
-    puts "vararg: #{vararg}"
     if vararg
       request_data[vararg[:name].to_sym] = varargs
       request[:params] ||= []
       request[:params] << ["#{vararg[:name].to_sym}",  varargs ]
-      # fill_params_and_uri(vararg, request)
     end
 
     # flag and options

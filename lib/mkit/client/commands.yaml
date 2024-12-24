@@ -1,26 +1,44 @@
 ---
 - cmd: exec
   usage:
-    - "<pod_id> [options] -- <command> [command args]"
+    - "<service_id_or_name> [options] -- <command> [command args]"
   help: Execute a command in a running pod
   request:
-    verb: ws
-    uri: "/pods/<%=id%>/exec"
+    verb: ws_console
+    uri: "/services/<%=id%>/pods/exec"
   args:
-    - name: id # why not simply pod_id?
+    - name: id
       help:
         - id
-        - Pod id
+        - Service id or name
       mandatory: true
+    - name: pod_id
+      help:
+        - -p <pod_id>
+        - Execute command for specified pod (default first)
+      mandatory: false
+      param: "<%=pod_id%>"
+      type: option
+      switch:
+        - "-p"
     - name: detached
       help:
         - -d
-        - Run command in the background
+        - Run command in background
       mandatory: false
       param: "<%=true%>"
       type: flag
       switch:
         - "-d"
+    - name: interactive
+      help:
+        - -i
+        - Run command in interactive mode
+      mandatory: false
+      param: "<%=true%>"
+      type: flag
+      switch:
+        - "-i"
     - name: separator
       help:
         - --
@@ -31,7 +49,7 @@
       help:
         - command
         - Command and options
-      mandatory: false
+      mandatory: true
       type: varargs
       param: <%=varargs%>
 - cmd: init
@@ -145,7 +163,7 @@
     uri: "/services/<%=id%>"
 - cmd: logs
   usage:
-    - "<service_id_or_name> [-f] [-n <lines>]"
+    - "<service_id_or_name> [-p <pod_id>] [-f] [-n <lines>]"
   help: view service logs
   request:
     verb: ws # new type
@@ -158,6 +176,15 @@
       help:
         - id
         - Service id or name
+    - name: pod_id
+      help:
+        - -p <pod_id>
+        - Show logs for specified pod (default first)
+      mandatory: false
+      param: "<%=pod_id%>"
+      type: option
+      switch:
+        - "-p"
     - name: follow
       help:
         - -f
@@ -173,15 +200,6 @@
         - Number of lines to show from the end of the logs (default 10)
       mandatory: false
       param: "<%=nr_lines%>"
-      type: option
-      switch:
-        - "-n"
-    - name: pods
-      help:
-        - -p <[pods]>
-        - Show logs for specified pods, e.g. pod1, pod2 (default first)
-      mandatory: false
-      param: "<%=pods%>"
       type: option
       switch:
         - "-n"

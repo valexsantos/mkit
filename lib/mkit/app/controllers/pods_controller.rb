@@ -10,14 +10,6 @@ class PodsController < MKIt::Server
   helpers MKIt::PodsHelper
   helpers MKIt::ParamsHelper
 
-  get '/services/:service_id/pods' do
-    "Not implemented\n"
-  end
-
-  get '/services/:service_id/pods/:pod_id' do
-    "Not implemented\n"
-  end
-
   get '/pods/:id/exec' do
     pod = find_by_id_or_name
     if request.websocket?

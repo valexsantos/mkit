@@ -5,7 +5,6 @@ module MKIt
 
     def build_options_hash(params:, options:)
       hash = {}
-      puts "Params: #{params}"
       options.each do |option|
         hash[option] = params[option]
       end
