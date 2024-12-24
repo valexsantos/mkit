@@ -9,7 +9,7 @@ The database is a simple sqlite3 db and the server is a Sinatra based applicatio
 
 A client is also included to access the API, e.g. `mkit ps`.
 
-The daemon is responsible for HAProxy pods routing configuration. It also provides the cluster DNS and manages the internal host interface and the docker instances. 
+The daemon is responsible for HAProxy pods routing configuration. It also provides the cluster DNS and manages the internal host interface and the pod instances. 
 
 ## Requirements
 
@@ -124,7 +124,7 @@ my_id: unique_id # this id is generated running mkit init
 
 ```
 service:
-  name: rabbitmq # unique
+  name: rabbitmq # unique. Available on internal DNS as 'rabbitmq'
   image: rabbitmq:3-management-alpine # image
   network: bridge # docker network - it will be created if it does not exists
   ports:  # haproxy port mapping
@@ -140,7 +140,7 @@ service:
     - 5672:5672:tcp:round_robin
     - 80:15672:http:round_robin
   resources:
-    min_replicas: 1 # default value
+    min_replicas: 1 # default value. Pods will be available on internal DNS as '<service_name>.internal'
     max_replicas: 1 # default value
   volumes:
     - docker://mkit_rabbitmq_data:/var/lib/rabbitmq # a docker volume - it will be created if it does not exists
@@ -192,8 +192,9 @@ restart      restart service
 create       create new service
 update       update service
 rm           remove service
+exec         execute a command in a running pod
 logs         view service logs
-version      prints mkit server version
+version      prints mkit client and server version
 proxy        haproxy status and control
 profile      mkit client configuration profile
 
