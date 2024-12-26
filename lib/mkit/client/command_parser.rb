@@ -51,7 +51,6 @@ class CommandParser
 
         argv.delete_at(0)
         request = command[:request]
-        #fill_request_defaults(request, request_data)
       end
       fill_cmd_args(command[:args], argv, request, request_data)
     end
