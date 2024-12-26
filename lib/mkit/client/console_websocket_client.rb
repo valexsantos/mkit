@@ -17,7 +17,7 @@ module MKIt
         ws = Faye::WebSocket::Client.new(@uri, nil, @options)
 
         ws.on :open do |_event|
-          puts "Connected to WebSocket server"
+          puts "Connected to remote server"
           puts "\r\n"
         end
 

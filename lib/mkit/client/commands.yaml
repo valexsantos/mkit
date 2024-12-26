@@ -131,7 +131,7 @@
     - name: format
       help:
         - -t
-        - ...as table format
+        - ...as table format (i.e. status format)
       mandatory: false
       param: "table"
       type: flag
