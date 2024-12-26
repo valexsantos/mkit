@@ -40,7 +40,7 @@ class Pod < ActiveRecord::Base
   end
 
   def set_status_from_docker
-    if self.instance
+    if !self.instance.nil?
       if instance.State.Running
         self.status = MKIt::Status::RUNNING
       else

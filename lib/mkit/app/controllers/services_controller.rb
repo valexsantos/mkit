@@ -27,8 +27,10 @@ class ServicesController < MKIt::Server
 
   get '/services/:id' do
     srv = find_by_id_or_name
-    resp = if request.env['CONTENT_TYPE'] == 'application/json'
-             srv.to_json
+    resp = if params[:format] == 'yaml'
+             srv.to_h.to_yaml
+           elsif params[:format] == 'json'
+             JSON.pretty_generate(srv.to_h)
            else
              format_response(srv)
            end
@@ -122,6 +124,7 @@ class ServicesController < MKIt::Server
 
   get '/services/:id/pods/exec' do
     srv = find_by_id_or_name
+    puts "exec #{params}"
     if request.websocket?
       pod = find_srv_pod_by_id_or_name(srv)
       options_parameter = build_options_hash(params: params, options: [:varargs, :interactive, :detached])
