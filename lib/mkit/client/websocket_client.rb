@@ -23,7 +23,7 @@ module MKIt
     def request(request, request_data)
       uri = request[:uri]
       unless request[:params].nil? || request[:params].empty?
-        uri = uri + '?' + request[:params].map { |k, v| "#{k}=#{v}" }.join('&')
+        uri = uri + '?' + request[:params].map { |k| "#{k}=#{request_data[k]}" }.join('&')
       end
       uri = ERB.new("#{@ws_url}#{uri}").result_with_hash(request_data)
 

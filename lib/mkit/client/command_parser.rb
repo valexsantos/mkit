@@ -56,6 +56,8 @@ class CommandParser
     end
     raise InvalidParametersException.new('Invalid command or parameters.', c) if request.nil?
 
+    fill_request_defaults(request, request_data)
+
     validate_command(command, request_data)
     # 
     {
@@ -63,6 +65,18 @@ class CommandParser
       request: request,
       data:  request_data
     }
+  end
+
+  def fill_request_defaults(request, request_data)
+    if !request.nil? && !request[:defaults].nil?
+      request[:defaults].each do |key, value|
+        request[:params] ||= []
+        unless request[:params].include?(key.to_sym)
+          request[:params] << key.to_sym
+          request_data[key.to_sym] = value
+        end
+      end
+    end
   end
 
   # args = command[:args]
@@ -84,7 +98,8 @@ class CommandParser
     if vararg
       request_data[vararg[:name].to_sym] = varargs
       request[:params] ||= []
-      request[:params] << ["#{vararg[:name].to_sym}",  varargs ]
+      request[:params] << vararg[:name].to_sym unless request[:params].include?(vararg[:name].to_sym)
+      request_data[vararg[:name].to_sym] = varargs
     end
 
     # flag and options
@@ -146,7 +161,7 @@ class CommandParser
     request[:uri] = request[:uri] + arg[:uri] unless arg[:uri].nil?
     unless arg[:param].nil?
       request[:params] ||= []
-      request[:params] << %W[#{arg[:name]} #{arg[:param]}]
+      request[:params] << arg[:name].to_sym unless request[:params].include?(arg[:name].to_sym)
     end
   end
 

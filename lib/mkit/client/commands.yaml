@@ -95,6 +95,57 @@
   request:
     verb: put
     uri: "/services/<%=id%>"
+- cmd: get
+  request:
+    verb: get
+    uri: "/services/<%=id%>"
+    defaults:
+      format: yaml
+  usage:
+    - "<service_id_or_name> [options]"
+  help: print service configuration
+  args:
+    - name: id
+      help:
+        - id
+        - Service id or name
+      mandatory: true
+    - name: format
+      help:
+        - -y
+        - ...as yaml format (default)
+      mandatory: false
+      param: "yaml"
+      type: flag
+      switch:
+        - "-y"
+    - name: format
+      help:
+        - -j
+        - ...as json format
+      mandatory: false
+      param: "json"
+      type: flag
+      switch:
+        - "-j"
+    - name: format
+      help:
+        - -t
+        - ...as table format (i.e. status format)
+      mandatory: false
+      param: "table"
+      type: flag
+      switch:
+        - "-t"
+    - name: details
+      help:
+        - -d
+        - include service dynamic details
+      mandatory: false
+      param: "<%=true%>"
+      type: flag
+      switch:
+        - "-d"
 - cmd: rm
   usage:
     - "<service_id_or_name>"

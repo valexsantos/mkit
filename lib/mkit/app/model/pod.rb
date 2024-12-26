@@ -40,7 +40,7 @@ class Pod < ActiveRecord::Base
   end
 
   def set_status_from_docker
-    if self.instance
+    if !self.instance.nil?
       if instance.State.Running
         self.status = MKIt::Status::RUNNING
       else
@@ -84,6 +84,15 @@ class Pod < ActiveRecord::Base
       MKItLogger.warn(e)
     end
     MkitJob.publish(topic: :pod_destroyed, service_id: self.service.id, data: {pod_id: self.id})
+  end
+
+  def to_h
+    {
+      'name' => self.name,
+      'ip' => self.dns_host.nil? || self.dns_host.ip.nil? ? self.ip : self.dns_host.ip,
+      'dns' => self.dns_host.nil? || self.dns_host.name.nil? ? self.ip : self.dns_host.name,
+      'status' => self.status
+    }
   end
 end
 

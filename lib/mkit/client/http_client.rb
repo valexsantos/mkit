@@ -38,15 +38,17 @@ module MKIt
       @client.request(req)
     end
 
-    def request(request, request_data = nil)
+    def request(request, request_data = {})
       req = nil
       uri = request[:uri]
       request[:file] = request_data[:file]
 
       unless request[:params].nil? || request[:params].empty?
-        uri = uri + '?' + request[:params].map { |k, v| "#{k}=#{v}" }.join('&')
+        uri = uri + '?' + request[:params].map { |k| "#{k}=#{request_data[k]}" }.join('&')
       end
       uri = ERB.new(uri).result_with_hash(request_data)
+      # puts "Request URI: #{uri}"
+
       case request[:verb].to_sym
       when :post
         req = Net::HTTP::Post.new(uri)

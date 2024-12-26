@@ -250,6 +250,55 @@ class Service < ActiveRecord::Base
     }
     out
   end
+  def to_h(options = {})
+    details = options[:details] || false
+    yaml = {}
+    yaml['service'] = {}
+    srv = yaml['service']
+    srv['name'] = self.name
+    srv['image'] = self.image
+    srv['command'] = self.command
+    srv['network'] = self.pods_network
+    if details
+      srv['status'] = self.status
+      srv['version'] = self.version
+      srv['ip'] = self.lease.ip
+      srv['dns'] = self.dns_host.name
+      srv['pods'] = []
+      self.pod.each { |p|
+        srv['pods'] << p.to_h
+      }
+    end
+    srv['ports'] = []
+    self.service_port.each { |p|
+      "#{p.internal_port}:#{p.external_port}:#{p.mode}:#{p.load_bal}".tap { |x|
+        if p.ssl == 'true'
+          x << ':ssl'
+          if !p.crt.nil? && p.crt != MKIt::Utils.proxy_cert
+            x << ":#{p.crt}"
+          end
+        end
+        srv['ports'] << x
+      }
+    }
+    srv['resources'] = {}
+    srv['resources']['min_replicas'] = self.min_replicas
+    srv['resources']['max_replicas'] = self.max_replicas
+    srv['volumes'] = []
+    self.volume.each { |v|
+      if v.ctype ==  MKIt::CType::DOCKER_STORAGE.to_s
+        srv['volumes'] << "docker://#{v.name}:#{v.path}"
+      elsif v.ctype ==  MKIt::CType::LOCAL_STORAGE.to_s
+        srv['volumes'] << "#{v.name}:#{v.path}"
+      end
+    }
+    srv['environment'] = {}
+    self.service_config.each { |c|
+      srv['environment'][c.key] = "#{c.value}"
+    }
+    yaml
+  end
+
   def as_json(options = {})
     srv = super
     a=[:pod, :volume, :service_config, :service_port]
