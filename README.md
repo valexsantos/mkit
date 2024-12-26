@@ -191,6 +191,7 @@ stop         stop service
 restart      restart service
 create       create new service
 update       update service
+get          print service configuration
 rm           remove service
 exec         execute a command in a running pod
 logs         view service logs
