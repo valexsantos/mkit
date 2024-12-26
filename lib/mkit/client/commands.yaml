@@ -137,6 +137,15 @@
       type: flag
       switch:
         - "-t"
+    - name: details
+      help:
+        - -d
+        - include service dynamic details
+      mandatory: false
+      param: "<%=true%>"
+      type: flag
+      switch:
+        - "-d"
 - cmd: rm
   usage:
     - "<service_id_or_name>"

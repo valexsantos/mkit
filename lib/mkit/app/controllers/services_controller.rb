@@ -28,9 +28,9 @@ class ServicesController < MKIt::Server
   get '/services/:id' do
     srv = find_by_id_or_name
     resp = if params[:format] == 'yaml'
-             srv.to_h.to_yaml
+             srv.to_h({details: params[:details] == 'true'}).to_yaml
            elsif params[:format] == 'json'
-             JSON.pretty_generate(srv.to_h)
+             JSON.pretty_generate(srv.to_h({details: params[:details] == 'true'}))
            else
              format_response(srv)
            end

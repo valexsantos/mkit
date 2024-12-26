@@ -250,7 +250,8 @@ class Service < ActiveRecord::Base
     }
     out
   end
-  def to_h
+  def to_h(options = {})
+    details = options[:details] || false
     yaml = {}
     yaml['service'] = {}
     srv = yaml['service']
@@ -258,6 +259,16 @@ class Service < ActiveRecord::Base
     srv['image'] = self.image
     srv['command'] = self.command
     srv['network'] = self.pods_network
+    if details
+      srv['status'] = self.status
+      srv['version'] = self.version
+      srv['ip'] = self.lease.ip
+      srv['dns'] = self.dns_host.name
+      srv['pods'] = []
+      self.pod.each { |p|
+        srv['pods'] << p.to_h
+      }
+    end
     srv['ports'] = []
     self.service_port.each { |p|
       "#{p.internal_port}:#{p.external_port}:#{p.mode}:#{p.load_bal}".tap { |x|
@@ -281,9 +292,9 @@ class Service < ActiveRecord::Base
         srv['volumes'] << "#{v.name}:#{v.path}"
       end
     }
-    srv['environment'] = []
+    srv['environment'] = {}
     self.service_config.each { |c|
-      srv['environment'] << { "#{c.key}" => "#{c.value}" }
+      srv['environment'][c.key] = "#{c.value}"
     }
     yaml
   end
