@@ -43,12 +43,14 @@ class ServicesController < MKIt::Server
       srv.log
     else
       pod = find_srv_pod_by_id_or_name(srv)
-      options_parameter = build_options_hash(params: params, options: [:nr_lines, :pods, :follow])
+      options_parameter = build_options_hash(params: params, options: [
+        :nr_lines, :pods, :follow, :details, :timestamps, :clear
+      ])
       request.websocket do |ws|
         listener = nil
         ws.onopen do
           settings.sockets << ws
-          ws.send("<<<< %s | %s >>>>\n" % [srv.name, srv.pod.first.name])
+          ws.send("<<<< %s | %s >>>>\n" % [srv.name, pod.name])
           listener = MKIt::DockerLogListener.new(pod, ws, options: options_parameter)
           settings.listeners << listener
           listener.register
