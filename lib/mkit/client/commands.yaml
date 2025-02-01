@@ -264,15 +264,6 @@
       type: flag
       switch:
         - "-d"
-    - name: clear
-      help:
-        - -c
-        - Clear log file
-      mandatory: false
-      param: "<%=true%>"
-      type: flag
-      switch:
-        - "-c"
 - cmd: version
   help: prints mkit client and server version
   request:

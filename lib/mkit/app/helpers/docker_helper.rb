@@ -43,7 +43,7 @@ module MKIt
     end
 
     def clear_logs(instance_id)
-      `echo "" > #{logfile(instance_id)}`
+      `echo > #{logfile(instance_id)}`
     end
 
     #
