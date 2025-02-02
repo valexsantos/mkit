@@ -38,6 +38,14 @@ module MKIt
       `docker logs -n 20 #{instance_id}`
     end
 
+    def logfile(instance_id)
+      `docker inspect --format='{{.LogPath}}' #{instance_id}`
+    end
+
+    def clear_logs(instance_id)
+      `echo > #{logfile(instance_id)}`
+    end
+
     #
     # network
     #

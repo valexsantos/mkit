@@ -245,6 +245,25 @@
       type: option
       switch:
         - "-n"
+    - name: timestamps
+      help:
+        - -t
+        - Show timestamps
+      mandatory: false
+      param: "<%=true%>"
+      type: flag
+      switch:
+        - "-t"
+        - "--timestamps"
+    - name: details
+      help:
+        - -d
+        - Show extra details
+      mandatory: false
+      param: "<%=true%>"
+      type: flag
+      switch:
+        - "-d"
 - cmd: version
   help: prints mkit client and server version
   request:

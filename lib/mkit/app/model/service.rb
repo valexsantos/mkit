@@ -271,7 +271,7 @@ class Service < ActiveRecord::Base
     end
     srv['ports'] = []
     self.service_port.each { |p|
-      "#{p.internal_port}:#{p.external_port}:#{p.mode}:#{p.load_bal}".tap { |x|
+      "#{p.external_port}:#{p.internal_port}:#{p.mode}:#{p.load_bal}".tap { |x|
         if p.ssl == 'true'
           x << ':ssl'
           if !p.crt.nil? && p.crt != MKIt::Utils.proxy_cert
