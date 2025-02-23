@@ -25,7 +25,7 @@ module MKIt
     module Templates
       DOCKER_RUN = 'docker/docker_run.sh'
       DOCKER_BUILD = 'docker/docker_build.sh'
-      HAPROXY = 'haproxy/xapp_haproxy.cfg'
+      HAPROXY = 'haproxy/app_haproxy.cfg'
       HAPROXY_DEFAULTS = 'haproxy/0000_defaults.cfg'
     end
 end

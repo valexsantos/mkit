@@ -7,7 +7,7 @@ class ServiceConfig < ActiveRecord::Base
     ServiceConfig.new(
       service: service,
       key: key,
-      value: value,
+      value: !value.nil? && (value.is_a?(TrueClass) || value.is_a?(FalseClass)) ? String(value) : value,
       version: service.version,
       ctype: ctype
     )

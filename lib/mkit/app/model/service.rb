@@ -1,4 +1,5 @@
 require 'mkit/app/model/volume'
+require 'mkit/app/model/ingress'
 require 'mkit/app/model/service_port'
 require 'mkit/app/model/service_config'
 require 'mkit/app/model/pod'
@@ -21,6 +22,7 @@ class Service < ActiveRecord::Base
 
   has_one  :lease, dependent: :destroy
   has_one  :dns_host, dependent: :destroy
+  has_one  :ingress, dependent: :destroy
 
   before_destroy :clean_up
 
@@ -90,12 +92,8 @@ class Service < ActiveRecord::Base
     end
     self.create_pods_network
 
-    # haproxy ports
-    self.service_port = []
-    config.ports&.each do |p|
-      port = ServicePort.create(service: self, config: p)
-      self.service_port << port
-    end
+    # haproxy config
+    self.ingress = Ingress.create(self, config.ingress)
 
     # volumes
     self.volume = []
@@ -252,6 +250,7 @@ class Service < ActiveRecord::Base
   end
   def to_h(options = {})
     details = options[:details] || false
+
     yaml = {}
     yaml['service'] = {}
     srv = yaml['service']
@@ -269,6 +268,7 @@ class Service < ActiveRecord::Base
         srv['pods'] << p.to_h
       }
     end
+    # services will be migrated on db migration startup
     srv['ports'] = []
     self.service_port.each { |p|
       "#{p.external_port}:#{p.internal_port}:#{p.mode}:#{p.load_bal}".tap { |x|
@@ -281,6 +281,9 @@ class Service < ActiveRecord::Base
         srv['ports'] << x
       }
     }
+
+    srv['ingress'] = self.ingress.to_h(options)
+
     srv['resources'] = {}
     srv['resources']['min_replicas'] = self.min_replicas
     srv['resources']['max_replicas'] = self.max_replicas
@@ -301,7 +304,7 @@ class Service < ActiveRecord::Base
 
   def as_json(options = {})
     srv = super
-    a=[:pod, :volume, :service_config, :service_port]
+    a=[:pod, :volume, :service_config, :ingress]
     a.each { | k | 
       srv[k] ||= []
       self.send(k).each { |v| 
