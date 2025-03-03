@@ -27,7 +27,7 @@ class Backend  < ActiveRecord::Base
     case self.load_bal
     when /^round_robin$/
       "roundrobin"
-    when /^leastconn$/
+    when /^least_conn$/
       "leastconn"
     else
       "roundrobin"
@@ -35,7 +35,7 @@ class Backend  < ActiveRecord::Base
   end
 
   def to_h(options = {})
-    {
+    hash = {
       name: self.name,
       bind: {
         port: self.port,
@@ -44,6 +44,11 @@ class Backend  < ActiveRecord::Base
       },
       options: self.options,
       balance: self.load_bal
-    }.remove_symbols_from_keys
+    }
+
+    if self.port.nil? || self.port.empty?
+      hash[:bind].delete(:port)
+    end
+    hash.remove_symbols_from_keys
   end
 end

@@ -10,7 +10,7 @@
 frontend  <%=name%>-<%=fe.name%>-front
   bind <%=lease.ip%>:<%=fe.port%> <%=if fe.ssl? then "ssl crt #{fe.crt}" end%> <%=fe.bind_options.join(' ')%>
   mode <%=fe.mode%>
-  <%=be.options.join("\n  ")%>
+  <%=fe.options.join("\n  ")%>
 
   use_backend <%=name%>-<%=fe.default_backend%>-back
 <%}%>

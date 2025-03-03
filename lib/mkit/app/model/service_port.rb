@@ -34,7 +34,6 @@ class ServicePort < ActiveRecord::Base
     ports = config.match(CONFIG_EXPRESSION)
     raise MKIt::InvalidPortsConfiguration.new("no match with config expression $#{CONFIG_EXPRESSION}") if ports.nil?
 
-    puts ports
     self.external_port = ports[1]
     self.internal_port = ports[2]
     self.mode = ports[3]

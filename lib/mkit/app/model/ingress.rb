@@ -27,6 +27,7 @@ class Ingress < ActiveRecord::Base
     frontend_ports = []
 
     # must have at least one frontend and one backend
+    raise "Ingress section is mandatory" unless yaml
     raise "At least one frontend is mandatory" unless yaml["frontend"]
     raise "At least one backend is mandatory" unless yaml["backend"]
     # frontend name is mandatory
@@ -59,6 +60,7 @@ class Ingress < ActiveRecord::Base
       unless backend_names.include?(front["default_backend"])
         raise "Frontend default_backend '#{front["default_backend"]}' must point to a valid backend name"
       end
+
     end
 
     # backend validation
@@ -67,6 +69,8 @@ class Ingress < ActiveRecord::Base
         raise "Backend name '#{name}' must be unique"
       end
     end
+
+    # global validations
     # each backend must point to a valid frontend default_backend
     frontend_default_backends = yaml["frontend"].map { |front| front["default_backend"] }
     yaml["backend"].each do |back|
@@ -75,10 +79,18 @@ class Ingress < ActiveRecord::Base
       end
     end
 
+    # when frontend port is range - e.g. 1200-1220, referred backend port must be empty
+    yaml["frontend"].each do |front|
+      if front["bind"]["port"] =~ /^\d+-\d+$/
+        referred_backend = yaml["backend"].find { |back| back["name"] == front["default_backend"] }
+        raise "Frontend port range '#{front["bind"]["port"]}' must have an empty backend port" unless referred_backend && (referred_backend["bind"]["port"].nil? || referred_backend["bind"]["port"].empty?)
+      end
+    end
+
     true
   end
 
-  def to_h(options)
+  def to_h(options = {})
     {
       frontend: self.frontends.map { |front| front.to_h },
       backend: self.backends.map { |back| back.to_h }

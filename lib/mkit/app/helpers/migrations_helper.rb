@@ -25,19 +25,22 @@ module MKIt
         frontend = {
           name: "frontend-#{external_port}",
           bind: {
-            port: external_port.to_i,
-            ssl: ssl.start_with?(':ssl'),
-            cert: cert || '/etc/ssl/certs/server.crt'
+            port: external_port
           },
           mode: mode,
           options: [],
           default_backend: "backend-#{external_port}"
         }
 
+        if ssl.start_with?(':ssl')
+          frontend[:bind][:ssl] = true
+          frontend[:bind][:cert] = cert
+        end
+
         backend = {
           name: "backend-#{external_port}",
           bind: {
-            port: internal_port.to_i,
+            port: internal_port,
             mode: mode
           },
           balance: load_bal
@@ -56,22 +59,8 @@ module MKIt
         ingress[:backend] << backend
       end
 
-      puts ingress
       ingress.remove_symbols_from_keys
     end
 
-    def remove_symbols_from_keys(hash)
-      hash.each_with_object({}) do |(k, v), new_hash|
-        new_key = k.to_s
-        new_value = if v.is_a?(Hash)
-                      remove_symbols_from_keys(v)
-                    elsif v.is_a?(Array)
-                      v.map { |item| item.is_a?(Hash) ? remove_symbols_from_keys(item) : item }
-                    else
-                      v
-                    end
-        new_hash[new_key] = new_value
-      end
-    end
   end
 end
