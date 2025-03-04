@@ -268,20 +268,8 @@ class Service < ActiveRecord::Base
         srv['pods'] << p.to_h
       }
     end
-    # services will be migrated on db migration startup
-    srv['ports'] = []
-    self.service_port.each { |p|
-      "#{p.external_port}:#{p.internal_port}:#{p.mode}:#{p.load_bal}".tap { |x|
-        if p.ssl == 'true'
-          x << ':ssl'
-          if !p.crt.nil? && p.crt != MKIt::Utils.proxy_cert
-            x << ":#{p.crt}"
-          end
-        end
-        srv['ports'] << x
-      }
-    }
 
+    # ingress
     srv['ingress'] = self.ingress.to_h(options)
 
     srv['resources'] = {}
