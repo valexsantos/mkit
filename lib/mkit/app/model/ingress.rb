@@ -7,10 +7,9 @@ class Ingress < ActiveRecord::Base
   has_many :frontends, dependent: :destroy
   has_many :backends, dependent: :destroy
 
-  def self.create(service, yaml)
+  def self.create(yaml)
     validate(yaml)
     ingress = Ingress.new
-    ingress.service = service
 
     yaml["backend"].each do |back|
       ingress.backends << Backend.create(back)
@@ -83,7 +82,7 @@ class Ingress < ActiveRecord::Base
     yaml["frontend"].each do |front|
       if front["bind"]["port"] =~ /^\d+-\d+$/
         referred_backend = yaml["backend"].find { |back| back["name"] == front["default_backend"] }
-        raise "Frontend port range '#{front["bind"]["port"]}' must have an empty backend port" unless referred_backend && (referred_backend["bind"]["port"].nil? || referred_backend["bind"]["port"].empty?)
+        raise "Frontend port range '#{front["bind"]["port"]}' must have an empty backend port" unless referred_backend && (referred_backend["bind"]["port"].nil?)
       end
     end
 

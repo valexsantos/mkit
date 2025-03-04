@@ -7,10 +7,8 @@ class MigrateSchema < ActiveRecord::Migration[5.1]
   #
   def up
     Service.all.each do |service|
-      puts "####### #{service} #######"
       ingress_config = service_ports_to_ingress service.service_port
-      ingress = Ingress.create(service, ingress_config)
-      service.ingress = ingress
+      service.ingress = Ingress.create(ingress_config)
       service.service_port.destroy_all
     end
   end

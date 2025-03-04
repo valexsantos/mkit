@@ -93,7 +93,7 @@ class Service < ActiveRecord::Base
     self.create_pods_network
 
     # haproxy config
-    self.ingress = Ingress.create(self, config.ingress)
+    self.ingress = Ingress.create(config.ingress)
 
     # volumes
     self.volume = []
