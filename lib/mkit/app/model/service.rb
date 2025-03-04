@@ -65,7 +65,9 @@ class Service < ActiveRecord::Base
       data = { service_id: srv.id, version: srv.version }
       # create pod
       (1..srv.min_replicas).each { |i|
-        MkitJob.publish(topic: :create_pod_saga, service_id: srv.id, data: data)
+        pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
+        srv.pod << pd
+        MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
       }
       srv
     end
@@ -117,12 +119,14 @@ class Service < ActiveRecord::Base
       self.version+=1
       self.configure(config)
 
-      # start new pod, destroy old pod...
-      self.pod.each { |pod| MkitJob.publish(topic: :destroy_pod, pod_id: pod.id, data: {}) }
+      # destroy old pods...
+      self.pod.destroy_all
       # create pod
       data = { service_id: self.id, version: self.version }
       (1..self.min_replicas).each { |i|
-        MkitJob.publish(topic: :create_pod_saga, service_id: self.id, data: data)
+        pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
+        self.pod << pd
+        MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
       }
       self.save
     end
@@ -162,6 +166,9 @@ class Service < ActiveRecord::Base
     MKIt::Interface.ip
   end
 
+  # TODO
+  #  refactor to remove it from db model and check if it is needed
+  #  this will be the pod status
   def update_status!
     combined_status = nil
     self.pod.each { |pod|
