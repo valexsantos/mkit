@@ -21,6 +21,10 @@ class Backend  < ActiveRecord::Base
     raise "name is mandatory" unless yaml["name"]
     raise "bind is mandatory" unless yaml["bind"]
     raise "mode is mandatory" unless yaml["bind"]["mode"]
+    raise "mode must match tcp|http" unless yaml["bind"]["mode"] =~ /^(tcp|http)$/
+    if yaml["balance"]
+      raise "balance must match round_robin|least_conn" unless yaml["balance"] =~ /^(round_robin|least_conn)$/
+    end
   end
 
   def load_balance
@@ -37,13 +41,13 @@ class Backend  < ActiveRecord::Base
   def to_h(options = {})
     hash = {
       name: self.name,
+      balance: self.load_bal,
+      options: self.options,
       bind: {
         port: self.port,
         mode: self.mode,
         options: self.bind_options
-      },
-      options: self.options,
-      balance: self.load_bal
+      }
     }
 
     if self.port.nil? || self.port.empty?

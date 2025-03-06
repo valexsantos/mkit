@@ -6,37 +6,37 @@ service:
   network: bridge
   ingress:
     frontend:
-    - name: http-in-ssl
-      bind:
-        port: 443
-        mode: http
-        ssl: true
-        options: []
-      options: []
-      default_backend: server
-    - name: http-in
-      bind:
-        port: 80
-        mode: http
-        ssl: false
+      - name: http-in-ssl
         options:
-        - accept-proxy
-        - transparent
-        - defer-accept
-      options: []
-      default_backend: server
+          - option httpclose
+          - option forwardfor
+        bind:
+          port: 443
+          mode: http
+          ssl: true
+          options:
+            - accept-proxy
+            - transparent
+            - defer-accept
+        default_backend: server
+      - name: http-in
+        options:
+          - option forwardfor
+        bind:
+          port: 80
+          mode: http
+        default_backend: server
     backend:
     - name: server
+      balance: round_robin
+      options:
+      - cookie JSESSIONID prefix
       bind:
         port: 8080
         mode: http
         options:
-        - cookie A check
-      options:
-      - option httpclose
-      - option forwardfor
-      - cookie JSESSIONID prefix
-      balance: round_robin
+        - cookie A
+        - check
   resources:
     min_replicas: 1
     max_replicas: 1

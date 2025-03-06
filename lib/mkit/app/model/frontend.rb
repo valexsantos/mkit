@@ -32,6 +32,7 @@ class Frontend  < ActiveRecord::Base
     raise "default_backend is mandatory" unless yaml["default_backend"]
     raise "bind is mandatory" unless yaml["bind"]
     raise "mode is mandatory" unless yaml["bind"]["mode"]
+    raise "mode must match tcp|http" unless yaml["bind"]["mode"] =~ /^(tcp|http)$/
   end
 
   def ssl?
@@ -41,6 +42,7 @@ class Frontend  < ActiveRecord::Base
   def to_h(options = {})
     hash = {
       name: self.name,
+      options: self.options,
       bind: {
         port: self.port,
         mode: self.mode,
@@ -48,7 +50,6 @@ class Frontend  < ActiveRecord::Base
         cert: self.ssl? ? self.crt : nil,
         options: self.bind_options
       },
-      options: self.options,
       default_backend: self.default_backend
     }
 
