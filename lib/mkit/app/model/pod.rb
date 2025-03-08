@@ -58,13 +58,7 @@ class Pod < ActiveRecord::Base
   end
 
   def start
-    # if self.instance.nil?
-    #   docker_run = parse
-    #   MKItLogger.info("deploying docker pod, cmd [#{docker_run}]")
-    #   create_instance(docker_run)
-    # else
-      start_instance(self.name) unless instance.State.Running
-    # end
+    start_instance(self.name) unless instance.State.Running
   end
 
   def stop
