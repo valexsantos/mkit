@@ -6,6 +6,7 @@ require 'sinatra'
 
 require_relative 'initializers/001_hash'
 require_relative 'initializers/002_openstruct'
+require_relative 'initializers/003_custom_exceptions'
 
 SOCKET_PATH = File.expand_path('/tmp/app.sock')
 

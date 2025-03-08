@@ -26,9 +26,9 @@ class Ingress < ActiveRecord::Base
     frontend_ports = []
 
     # must have at least one frontend and one backend
-    raise "Ingress section is mandatory" unless yaml
-    raise "At least one frontend is mandatory" unless yaml["frontend"]
-    raise "At least one backend is mandatory" unless yaml["backend"]
+    raise_bad_configuration "Ingress section is mandatory" unless yaml
+    raise_bad_configuration "At least one frontend is mandatory" unless yaml["frontend"]
+    raise_bad_configuration "At least one backend is mandatory" unless yaml["backend"]
     # frontend name is mandatory
     yaml["frontend"].each { |front| raise "Frontend name is mandatory" unless front["name"] }
     # backend name is mandatory
@@ -39,25 +39,25 @@ class Ingress < ActiveRecord::Base
     # frontend validation
     yaml["frontend"].each do |front|
       # name is mandatory
-      raise "Frontend name is mandatory" unless front["name"]
+      raise_bad_configuration "Frontend name is mandatory" unless front["name"]
       # frontend name must be unique
       if frontend_names.include?(front["name"])
-        raise "Frontend name '#{front["name"]}' must be unique"
+        raise_bad_configuration "Frontend name '#{front["name"]}' must be unique"
       end
       frontend_names << front["name"]
 
       # bind and mode are mandatory, port is not
-      raise "Frontend bind and mode are mandatory" unless front["bind"] && front["bind"]["mode"]
+      raise_bad_configuration "Frontend bind and mode are mandatory" unless front["bind"] && front["bind"]["mode"]
 
       # port must be unique
       if frontend_ports.include?(front["bind"]["port"])
-        raise "Frontend port '#{front["bind"]["port"]}' must be unique"
+        raise_bad_configuration "Frontend port '#{front["bind"]["port"]}' must be unique"
       end
       frontend_ports << front["bind"]["port"]
 
       # default_backend must point to a valid backend name
       unless backend_names.include?(front["default_backend"])
-        raise "Frontend default_backend '#{front["default_backend"]}' must point to a valid backend name"
+        raise_bad_configuration "Frontend default_backend '#{front["default_backend"]}' must point to a valid backend name"
       end
 
     end
@@ -65,7 +65,7 @@ class Ingress < ActiveRecord::Base
     # backend validation
     backend_names.each do |name|
       if backend_names.count(name) > 1
-        raise "Backend name '#{name}' must be unique"
+        raise_bad_configuration "Backend name '#{name}' must be unique"
       end
     end
 
@@ -74,7 +74,7 @@ class Ingress < ActiveRecord::Base
     frontend_default_backends = yaml["frontend"].map { |front| front["default_backend"] }
     yaml["backend"].each do |back|
       unless frontend_default_backends.include?(back["name"])
-        raise "Backend '#{back["name"]}' must be referenced by at least one frontend default_backend"
+        raise_bad_configuration "Backend '#{back["name"]}' must be referenced by at least one frontend default_backend"
       end
     end
 
@@ -82,7 +82,7 @@ class Ingress < ActiveRecord::Base
     yaml["frontend"].each do |front|
       if front["bind"]["port"] =~ /^\d+-\d+$/
         referred_backend = yaml["backend"].find { |back| back["name"] == front["default_backend"] }
-        raise "Frontend port range '#{front["bind"]["port"]}' must have an empty backend port" unless referred_backend && (referred_backend["bind"]["port"].nil?)
+        raise_bad_configuration "Frontend port range '#{front["bind"]["port"]}' must have an empty backend port" unless referred_backend && (referred_backend["bind"]["port"].nil?)
       end
     end
 

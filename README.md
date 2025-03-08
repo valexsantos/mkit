@@ -227,6 +227,7 @@ create       create new service
 update       update service
 get          print service configuration
 rm           remove service
+migrate      migrate local service definition to the new schema version
 exec         execute a command in a running pod
 logs         view service logs
 version      prints mkit client and server version

@@ -162,7 +162,7 @@
 - cmd: migrate
   usage:
     - "<service.yaml>"
-  help: migrate service to new definition
+  help: migrate local service definition to the new schema version
   args:
     - name: file
       help:

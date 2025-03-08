@@ -6,9 +6,7 @@ module MKIt
   module MigrationsHelper
 
     def migrate_service(yaml)
-      puts yaml
       yaml['service']['ingress'] = ports_to_ingress(yaml['service']['ports'])
-
       yaml['service'].delete('ports')
       yaml
     end
@@ -24,11 +22,11 @@ module MKIt
 
         frontend = {
           name: "frontend-#{external_port}",
-          bind: {
-            port: external_port
-          },
-          mode: mode,
           options: [],
+          bind: {
+            port: external_port,
+            mode: mode
+          },
           default_backend: "backend-#{external_port}"
         }
 

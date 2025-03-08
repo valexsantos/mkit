@@ -18,12 +18,12 @@ class Backend  < ActiveRecord::Base
   end
 
   def self.validate(yaml)
-    raise "name is mandatory" unless yaml["name"]
-    raise "bind is mandatory" unless yaml["bind"]
-    raise "mode is mandatory" unless yaml["bind"]["mode"]
-    raise "mode must match tcp|http" unless yaml["bind"]["mode"] =~ /^(tcp|http)$/
+    raise_bad_configuration "name is mandatory" unless yaml["name"]
+    raise_bad_configuration "bind is mandatory" unless yaml["bind"]
+    raise_bad_configuration "mode is mandatory" unless yaml["bind"]["mode"]
+    raise_bad_configuration "mode must match tcp|http" unless yaml["bind"]["mode"] =~ /^(tcp|http)$/
     if yaml["balance"]
-      raise "balance must match round_robin|least_conn" unless yaml["balance"] =~ /^(round_robin|least_conn)$/
+      raise_bad_configuration "balance must match round_robin|least_conn" unless yaml["balance"] =~ /^(round_robin|least_conn)$/
     end
   end
 

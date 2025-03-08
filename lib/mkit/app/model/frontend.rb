@@ -16,7 +16,7 @@ class Frontend  < ActiveRecord::Base
     frontend.mode = yaml["bind"]["mode"] if yaml["bind"]["mode"]
     frontend.bind_options = yaml["bind"]["options"] if yaml["bind"]["options"]
     frontend.options = yaml["options"] if yaml["options"]
-    frontend.default_backend = yaml["default_backend"]
+    frontend.default_backend = yaml["use_backend"]
 
     has_ssl = !yaml["bind"]["ssl"].nil? && yaml["bind"]["ssl"].to_s.start_with?('true')
     frontend.ssl = has_ssl ? 'true' : 'false'
@@ -28,11 +28,12 @@ class Frontend  < ActiveRecord::Base
   end
 
   def self.validate(yaml)
-    raise "name is mandatory" unless yaml["name"]
-    raise "default_backend is mandatory" unless yaml["default_backend"]
-    raise "bind is mandatory" unless yaml["bind"]
-    raise "mode is mandatory" unless yaml["bind"]["mode"]
-    raise "mode must match tcp|http" unless yaml["bind"]["mode"] =~ /^(tcp|http)$/
+    raise_bad_configuration "name is mandatory" unless yaml["name"]
+    raise_bad_configuration "default_backend is mandatory" unless yaml["default_backend"]
+    raise_bad_configuration "bind is mandatory" unless yaml["bind"]
+    raise_bad_configuration "mode is mandatory" unless yaml["bind"]["mode"]
+    raise_bad_configuration "frontend port is mandatory" unless yaml["bind"]["port"]
+    raise_bad_configuration "mode must match tcp|http" unless yaml["bind"]["mode"] =~ /^(tcp|http)$/
   end
 
   def ssl?
