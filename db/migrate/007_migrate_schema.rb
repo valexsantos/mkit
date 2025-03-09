@@ -27,7 +27,7 @@ class MigrateSchema < ActiveRecord::Migration[5.1]
         default_backend: "backend-#{port.external_port}"
       }
 
-      if port.ssl.start_with?('true')
+      if !port.ssl.nil? && port.ssl.start_with?('true')
         frontend[:bind][:ssl] = true
         frontend[:bind][:cert] = port.crt
       end
