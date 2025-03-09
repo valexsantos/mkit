@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'mkit/utils'
-
 module MKIt
   module MigrationsHelper
 

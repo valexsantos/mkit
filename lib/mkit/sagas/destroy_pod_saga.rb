@@ -27,11 +27,6 @@ module MKIt
         MKItLogger.warn(e)
       end
 
-      # MkitJob.publish(topic: :pod_destroyed,
-      #                 service_id: job.service_id,
-      #                 data: {pod_name: job.data['pod_name']}
-      # )
-
     end
   end
 end

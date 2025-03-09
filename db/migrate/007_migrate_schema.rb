@@ -54,7 +54,6 @@ class MigrateSchema < ActiveRecord::Migration[5.1]
       ingress[:backend] << backend
     end
 
-    hash = ingress.remove_symbols_from_keys
-    hash
+    ingress.remove_symbols_from_keys
   end
 end
