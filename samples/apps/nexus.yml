@@ -1,14 +1,49 @@
-#
+---
 service:
   name: nexus
   image: sonatype/nexus3
   network: bridge
-  ports:
-    - 80:8081:http:round_robin
-    - 443:8081:http:round_robin:ssl
   resources:
     max_replicas: 1
     min_replicas: 1
   volumes:
-    - docker://nexus_data:/nexus-data
-
+  - docker://nexus_data:/nexus-data
+  ingress:
+    frontend:
+    - name: frontend-80
+      options: []
+      bind:
+        port: '80'
+        mode: http
+      default_backend: backend-80
+    - name: frontend-443
+      options: []
+      bind:
+        port: '443'
+        mode: http
+        ssl: true
+        cert: 
+      default_backend: backend-443
+    backend:
+    - name: backend-80
+      bind:
+        port: '8081'
+        mode: http
+        options:
+        - cookie A check
+      balance: round_robin
+      options:
+      - option httpclose
+      - option forwardfor
+      - cookie JSESSIONID prefix
+    - name: backend-443
+      bind:
+        port: '8081'
+        mode: http
+        options:
+        - cookie A check
+      balance: round_robin
+      options:
+      - option httpclose
+      - option forwardfor
+      - cookie JSESSIONID prefix

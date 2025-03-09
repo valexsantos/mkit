@@ -1,11 +1,21 @@
-#
+---
 service:
   name: redis-sentinel
   image: bitnami/redis-sentinel:latest
   network: bridge
-  ports:
-    - 26379:26379:tcp:round_robin
   environment:
     REDIS_MASTER_HOST: redis
-
-
+  ingress:
+    frontend:
+    - name: frontend-26379
+      options: []
+      bind:
+        port: '26379'
+        mode: tcp
+      default_backend: backend-26379
+    backend:
+    - name: backend-26379
+      bind:
+        port: '26379'
+        mode: tcp
+      balance: round_robin

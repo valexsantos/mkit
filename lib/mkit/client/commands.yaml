@@ -159,6 +159,19 @@
   request:
     verb: delete
     uri: "/services/<%=id%>"
+- cmd: migrate
+  usage:
+    - "<service.yaml>"
+  help: migrate local service definition to the new schema version
+  args:
+    - name: file
+      help:
+        - file
+        - Service definition
+      mandatory: true
+  request:
+    verb: post
+    uri: "/services/migrate"
 - cmd: exec
   usage:
     - "<service_id_or_name> [options] -- <command> [args...]"

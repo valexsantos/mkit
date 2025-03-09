@@ -58,13 +58,7 @@ class Pod < ActiveRecord::Base
   end
 
   def start
-    if self.instance.nil?
-      docker_run = parse
-      MKItLogger.info("deploying docker pod, cmd [#{docker_run}]")
-      create_instance(docker_run)
-    else
-      start_instance(self.name) unless instance.State.Running
-    end
+    start_instance(self.name) unless instance.State.Running
   end
 
   def stop
@@ -78,12 +72,12 @@ class Pod < ActiveRecord::Base
   end
 
   def clean_up
-    begin
-      remove_instance(self.name) unless self.instance.nil?
-    rescue => e
-      MKItLogger.warn(e)
-    end
-    MkitJob.publish(topic: :pod_destroyed, service_id: self.service.id, data: {pod_id: self.id})
+    # stop and destroy pod
+    MkitJob.publish(topic: :destroy_pod_saga,
+                    service_id: self.service.id,
+                    pod_id: self.id,
+                    data: {pod_name: self.name}
+    )
   end
 
   def to_h

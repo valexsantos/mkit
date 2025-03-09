@@ -1,19 +1,46 @@
-#
+---
 service:
   name: rabbitmq
   image: rabbitmq:3-management-alpine
-  network: bridge # docker network
-  ports:
-    - 5672:5672:tcp:round_robin
-    - 80:15672:http:round_robin
+  network: bridge
   resources:
     max_replicas: 1
     min_replicas: 1
   volumes:
-    - docker://mkit_rabbitmq_data:/var/lib/rabbitmq
-    - docker://mkit_rabbitmq_logs:/var/log/rabbitmq
+  - docker://mkit_rabbitmq_data:/var/lib/rabbitmq
+  - docker://mkit_rabbitmq_logs:/var/log/rabbitmq
   environment:
     RABBITMQ_DEFAULT_USER: admin
     RABBITMQ_DEFAULT_PASS: admin
     RABBITMQ_DEFAULT_VHOST: mkit
-
+  ingress:
+    frontend:
+    - name: frontend-5672
+      options: []
+      bind:
+        port: '5672'
+        mode: tcp
+      default_backend: backend-5672
+    - name: frontend-80
+      options: []
+      bind:
+        port: '80'
+        mode: http
+      default_backend: backend-80
+    backend:
+    - name: backend-5672
+      bind:
+        port: '5672'
+        mode: tcp
+      balance: round_robin
+    - name: backend-80
+      bind:
+        port: '15672'
+        mode: http
+        options:
+        - cookie A check
+      balance: round_robin
+      options:
+      - option httpclose
+      - option forwardfor
+      - cookie JSESSIONID prefix

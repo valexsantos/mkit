@@ -1,9 +1,19 @@
-#
+---
 service:
   name: redis
   image: redis:4.0-alpine
   network: bridge
-  ports:
-    - 6379:6379:tcp:round_robin
-
-
+  ingress:
+    frontend:
+    - name: frontend-6379
+      options: []
+      bind:
+        port: '6379'
+        mode: tcp
+      default_backend: backend-6379
+    backend:
+    - name: backend-6379
+      bind:
+        port: '6379'
+        mode: tcp
+      balance: round_robin

@@ -1,4 +1,5 @@
 require 'mkit/app/model/volume'
+require 'mkit/app/model/ingress'
 require 'mkit/app/model/service_port'
 require 'mkit/app/model/service_config'
 require 'mkit/app/model/pod'
@@ -21,6 +22,7 @@ class Service < ActiveRecord::Base
 
   has_one  :lease, dependent: :destroy
   has_one  :dns_host, dependent: :destroy
+  has_one  :ingress, dependent: :destroy
 
   before_destroy :clean_up
 
@@ -63,7 +65,9 @@ class Service < ActiveRecord::Base
       data = { service_id: srv.id, version: srv.version }
       # create pod
       (1..srv.min_replicas).each { |i|
-        MkitJob.publish(topic: :create_pod_saga, service_id: srv.id, data: data)
+        pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
+        srv.pod << pd
+        MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
       }
       srv
     end
@@ -90,12 +94,8 @@ class Service < ActiveRecord::Base
     end
     self.create_pods_network
 
-    # haproxy ports
-    self.service_port = []
-    config.ports&.each do |p|
-      port = ServicePort.create(service: self, config: p)
-      self.service_port << port
-    end
+    # haproxy config
+    self.ingress = Ingress.create(config.ingress)
 
     # volumes
     self.volume = []
@@ -119,12 +119,14 @@ class Service < ActiveRecord::Base
       self.version+=1
       self.configure(config)
 
-      # start new pod, destroy old pod...
-      self.pod.each { |pod| MkitJob.publish(topic: :destroy_pod, pod_id: pod.id, data: {}) }
+      # destroy old pods...
+      self.pod.destroy_all
       # create pod
       data = { service_id: self.id, version: self.version }
       (1..self.min_replicas).each { |i|
-        MkitJob.publish(topic: :create_pod_saga, service_id: self.id, data: data)
+        pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
+        self.pod << pd
+        MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
       }
       self.save
     end
@@ -164,6 +166,9 @@ class Service < ActiveRecord::Base
     MKIt::Interface.ip
   end
 
+  # TODO
+  #  refactor to remove it from db model and check if it is needed
+  #  this will be the pod status
   def update_status!
     combined_status = nil
     self.pod.each { |pod|
@@ -252,6 +257,7 @@ class Service < ActiveRecord::Base
   end
   def to_h(options = {})
     details = options[:details] || false
+
     yaml = {}
     yaml['service'] = {}
     srv = yaml['service']
@@ -269,18 +275,10 @@ class Service < ActiveRecord::Base
         srv['pods'] << p.to_h
       }
     end
-    srv['ports'] = []
-    self.service_port.each { |p|
-      "#{p.external_port}:#{p.internal_port}:#{p.mode}:#{p.load_bal}".tap { |x|
-        if p.ssl == 'true'
-          x << ':ssl'
-          if !p.crt.nil? && p.crt != MKIt::Utils.proxy_cert
-            x << ":#{p.crt}"
-          end
-        end
-        srv['ports'] << x
-      }
-    }
+
+    # ingress
+    srv['ingress'] = self.ingress.to_h(options)
+
     srv['resources'] = {}
     srv['resources']['min_replicas'] = self.min_replicas
     srv['resources']['max_replicas'] = self.max_replicas
@@ -301,7 +299,7 @@ class Service < ActiveRecord::Base
 
   def as_json(options = {})
     srv = super
-    a=[:pod, :volume, :service_config, :service_port]
+    a=[:pod, :volume, :service_config, :ingress]
     a.each { | k | 
       srv[k] ||= []
       self.send(k).each { |v| 

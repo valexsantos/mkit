@@ -1,0 +1,46 @@
+---
+service:
+  name: httpbin
+  image: mccutchen/go-httpbin
+  command: 
+  network: bridge
+  ingress:
+    frontend:
+      - name: http-in-ssl
+        options:
+          - option httpclose
+          - option forwardfor
+        bind:
+          port: 443
+          mode: http
+          ssl: true
+          options:
+            - accept-proxy
+            - transparent
+            - defer-accept
+        default_backend: server
+      - name: http-in
+        options:
+          - option forwardfor
+        bind:
+          port: 80
+          mode: http
+        default_backend: server
+    backend:
+    - name: server
+      balance: round_robin
+      options:
+      - cookie JSESSIONID prefix
+      bind:
+        port: 8080
+        mode: http
+        options:
+        - cookie A
+        - check
+  resources:
+    min_replicas: 1
+    max_replicas: 1
+  volumes: []
+  environment:
+    LOG4J_LEVEL: WARN
+    LOGGING_LEVEL_ROOT: WARN

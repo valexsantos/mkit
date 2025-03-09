@@ -22,7 +22,19 @@ module MKIt
       super(400, message)
     end
   end
-  class ServiceNotFoundException < StandardError; end
+
+  class ServiceNotFoundException < BaseException
+    def initialize(message = nil)
+      super(404, message)
+    end
+  end
+
+  class InvalidConfigurationException < BaseException
+    def initialize(message = nil)
+      super(400, message)
+    end
+  end
+
   class PodNotFoundException     < StandardError; end
   class AppAlreadyDeployedException < StandardError; end
   class InvalidPortMappingTypeException < StandardError; end

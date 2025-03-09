@@ -28,7 +28,9 @@ module MKIt
           MkitJob.publish(topic: :update_proxy_config, service_id: job.service_id)
         end
       when :pod_ip_updated
-        MkitJob.publish(topic: :update_proxy_config, service_id: job.service_id)
+        if Service.exists?(job.service_id)
+          MkitJob.publish(topic: :update_proxy_config, service_id: job.service_id)
+        end
       else
         MKItLogger.info("#{self.class} <<TODO>> job #{job.inspect}....")
       end

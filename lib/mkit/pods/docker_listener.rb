@@ -6,7 +6,7 @@ require "mkit/cmd/shell_client"
 # https://docs.docker.com/engine/reference/commandline/events
 require 'mkit/app/helpers/docker_helper'
 module MKIt
-class StopThread < RuntimeError; end
+  class StopThread < RuntimeError; end
 
   class DockerListener
     include MKIt::DockerHelper
@@ -67,22 +67,27 @@ class StopThread < RuntimeError; end
         end
       when :network
         pod_id = msg.Actor.Attributes.container
-        inspect = inspect_instance(pod_id).to_o
-        pod_name = inspect.Name[1..]
-        pod = Pod.find_by(name: pod_name)
-        unless pod.nil?
-          case action
-          when :connect
-            MKItLogger.info("docker network #{action} received: #{msg} for pod #{pod_name}")
-            pod.update_ip
-            pod.save
-          when :disconnect
-            MKItLogger.debug("  #{type} #{action} <<NOOP / TODO>>")
+        inspect = inspect_instance(pod_id)
+        unless inspect.nil?
+          inspect = inspect.to_o
+          pod_name = inspect.Name[1..]
+          pod = Pod.find_by(name: pod_name)
+          unless pod.nil?
+            case action
+            when :connect
+              MKItLogger.info("docker network #{action} received: #{msg} for pod #{pod_name}")
+              pod.update_ip
+              pod.save
+            when :disconnect
+              MKItLogger.debug("  #{type} #{action} <<NOOP / TODO>>")
+            else
+              MKItLogger.debug("  #{type} #{action} <<TODO>>")
+            end
           else
-            MKItLogger.debug("  #{type} #{action} <<TODO>>")
+            MKItLogger.warn("docker <<#{type}>> <#{action}> received: #{msg}. But I don't know anything about pod #{pod_id}/#{pod_name}")
           end
         else
-          MKItLogger.warn("docker <<#{type}>> <#{action}> received: #{msg}. But I don't know anything about pod #{pod_id}/#{pod_name}")
+            MKItLogger.warn("docker <<#{type}>> <#{action}> received: #{msg}. But I don't know anything about pod #{pod_id}")
         end
       else
         MKItLogger.info("\t#{type} #{action} <<unknown>>")

@@ -3,12 +3,14 @@
 require 'mkit/app/model/service'
 require 'mkit/app/helpers/services_helper'
 require 'mkit/app/helpers/params_helper'
+require 'mkit/app/helpers/migrations_helper'
 require 'mkit/pods/docker_log_listener'
 require 'mkit/pods/docker_exec_command'
 
 class ServicesController < MKIt::Server
   helpers MKIt::ServicesHelper
   helpers MKIt::ParamsHelper
+  helpers MKIt::MigrationsHelper
 
   # curl localhost:4567/services
   get '/services' do
@@ -98,6 +100,16 @@ class ServicesController < MKIt::Server
       srv = Service.create(yaml.to_o)
     end
     format_response(srv)
+  end
+
+  post '/services/migrate' do
+    srv = 'no file'
+    if params[:file]
+      tempfile = params[:file][:tempfile]
+      yaml = YAML.safe_load(tempfile.read)
+      srv = migrate_service(yaml).to_yaml
+    end
+    srv
   end
 
   #

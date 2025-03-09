@@ -1,0 +1,28 @@
+#
+# MKIt generated file
+# Service <%=name%>
+#
+
+#
+# frontends
+#
+<% ingress.frontends.each { |fe|%>
+frontend  <%=name%>-<%=fe.name%>-front
+  bind <%=lease.ip%>:<%=fe.port%> <%=if fe.ssl? then "ssl crt #{fe.crt}" end%> <%=fe.bind_options.join(' ')%>
+  mode <%=fe.mode%>
+  <%=fe.options.join("\n  ")%>
+
+  use_backend <%=name%>-<%=fe.default_backend%>-back
+<%}%>
+#
+# backends
+#
+<% ingress.backends.each { |be|%>
+backend <%=name%>-<%=be.name%>-back
+  mode <%=be.mode%>
+  balance <%=be.load_balance%>
+  <%=be.options.join("\n  ")%>
+<%pod.each { | pod | %>
+  server <%=pod.name%>  <%=pod.ip%><%unless be.port.nil? || be.port.empty? then%><%=":#{be.port}"%> <%=be.bind_options.join(' ')%> <%end%>
+<%}%>
+<%}%>

@@ -127,18 +127,52 @@ service:
   name: rabbitmq # unique. Available on internal DNS as 'rabbitmq'
   image: rabbitmq:3-management-alpine # image
   network: bridge # docker network - it will be created if it does not exists
-  ports:  # haproxy port mapping
-          #   <external_port>:[internal_port]:<tcp|http>:[round_robin (default)|leastconn]
-          # to define a range on `external_port`, leave `internal_port` blank
-          #   - 5000-5100::tcp:round_robin
-          #   range on `internal_port` is not supported
-          # ssl suport
-          #   <external_port>:[internal_port]:<tcp|http>:round_robin|leastconn[:ssl[,<cert.pem>(mkit.pem default)>]]
-          #   e.g.
-          #  - 443:80:http:round_robin:ssl # uses mkitd default crt file (mkit.pem)
-          #  - 443:80:http:round_robin:ssl,/etc/pki/foo.pem # custom crt file full path
-    - 5672:5672:tcp:round_robin
-    - 80:15672:http:round_robin
+  ingress:
+    # ingress configuration
+    # see https://docs.haproxy.org/3.1/configuration.html
+    frontend: # frontend section
+      - name: http-in-ssl # frontend name - must be unique
+        options: # frontend global section options
+          - option httpclose
+          - option forwardfor
+        bind:
+          port: 443 # to define a range (e.g. 8000-8080), backend `port` must be blank
+          ssl: true # ssl support - default is false
+          mode: http # tcp|http
+          cert: /etc/ssl/certs/server.crt # if empty uses mkit default crt file (mkit.pem)
+          options: # frontend bind section options
+            - accept-proxy
+            - transparent
+            - defer-accept
+        default_backend: admin # backend to use - must point to a backend name
+      - name: http-in
+        bind:
+          port: 80
+          mode: http
+        default_backend: admin
+      - name: server-in
+        bind:
+          port: 5672
+          mode: tcp
+        default_backend: server
+    backend: # backend section
+      - name: admin # backend name - must be unique
+        balance: round_robin # round_robin|least_conn - default is round_robin
+        options: # backend global section options
+          - option httpclose
+          - option forwardfor
+          - cookie JSESSIONID prefix
+        bind:
+          port: 15672 # if this backend is used by a frontend with a range port, this port must be blank
+          mode: http
+          options: # backend bind section options
+            - cookie A
+            - check
+      - name: server
+        balance: round_robin
+        bind:
+          port: 5672
+          mode: tcp
   resources:
     min_replicas: 1 # default value. Pods will be available on internal DNS as '<service_name>.internal'
     max_replicas: 1 # default value
@@ -163,9 +197,9 @@ Usage: mkitd [options]
     -b bind                          specify bind address (e.g. 0.0.0.0)
     -e env                           set the environment (default is development)
     -o addr                          alias for '-b' option
-        --no-ssl                     disable ssl - use http for local server. (default is https)
-        --ssl-key-file PATH          Path to private key (default mkit internal)
-        --ssl-cert-file PATH         Path to certificate (default mkit internal)
+    --no-ssl                         disable ssl - use http for local server. (default is https)
+    --ssl-key-file PATH              Path to private key (default mkit internal)
+    --ssl-cert-file PATH             Path to certificate (default mkit internal)
 ```
 
 There's also samples for [systemd](samples/systemd) and [daemontools](samples/daemontools) as well for some miscellaneous [spps](samples/apps).
@@ -193,6 +227,7 @@ create       create new service
 update       update service
 get          print service configuration
 rm           remove service
+migrate      migrate local service definition to the new schema version
 exec         execute a command in a running pod
 logs         view service logs
 version      prints mkit client and server version

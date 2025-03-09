@@ -1,15 +1,26 @@
-#
+---
 service:
   name: kafka-zookeeper
   image: confluentinc/cp-zookeeper:7.1.6
   network: kafka-cluster
-  ports:
-    - 2181:2181:tcp:round_robin
   volumes:
-    - docker://kafka_zookeeper_secrets:/etc/zookeeper/secrets
-    - docker://kafka_zookeeper_data:/var/lib/zookeeper/data
-    - docker://kafka_zookeeper_log:/var/lib/zookeeper/log
+  - docker://kafka_zookeeper_secrets:/etc/zookeeper/secrets
+  - docker://kafka_zookeeper_data:/var/lib/zookeeper/data
+  - docker://kafka_zookeeper_log:/var/lib/zookeeper/log
   environment:
     ZOOKEEPER_CLIENT_PORT: 2181
     ZOOKEEPER_TICK_TIME: 2000
-
+  ingress:
+    frontend:
+    - name: frontend-2181
+      options: []
+      bind:
+        port: '2181'
+        mode: tcp
+      default_backend: backend-2181
+    backend:
+    - name: backend-2181
+      bind:
+        port: '2181'
+        mode: tcp
+      balance: round_robin

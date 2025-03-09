@@ -1,16 +1,33 @@
-#
+---
 service:
   name: kafka-magic
   network: kafka-cluster
-  ports:
-    - 80:80:http:round_robin
   image: digitsy/kafka-magic
   environment:
-    KMAGIC_ALLOW_TOPIC_DELETE: "true"
-    KMAGIC_ALLOW_SCHEMA_DELETE: "true"
-    KMAGIC_CONFIG_STORE_TYPE: "file"
-    KMAGIC_CONFIG_STORE_CONNECTION: "Data Source=/config/KafkaMagicConfig.db;"
-    KMAGIC_CONFIG_ENCRYPTION_KEY: "123456"
+    KMAGIC_ALLOW_TOPIC_DELETE: 'true'
+    KMAGIC_ALLOW_SCHEMA_DELETE: 'true'
+    KMAGIC_CONFIG_STORE_TYPE: file
+    KMAGIC_CONFIG_STORE_CONNECTION: Data Source=/config/KafkaMagicConfig.db;
+    KMAGIC_CONFIG_ENCRYPTION_KEY: '123456'
   volumes:
-    - docker://kafka_magic_config:/config
-
+  - docker://kafka_magic_config:/config
+  ingress:
+    frontend:
+    - name: frontend-80
+      options: []
+      bind:
+        port: '80'
+        mode: http
+      default_backend: backend-80
+    backend:
+    - name: backend-80
+      bind:
+        port: '80'
+        mode: http
+        options:
+        - cookie A check
+      balance: round_robin
+      options:
+      - option httpclose
+      - option forwardfor
+      - cookie JSESSIONID prefix
