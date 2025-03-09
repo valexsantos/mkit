@@ -1,16 +1,14 @@
-#
+---
 service:
   name: postgres
   network: bridge
-  image: "postgres:14"
-  ports:
-    - 5432:5432:tcp:round_robin
+  image: postgres:14
   environment:
     POSTGRES_USER: postgres
     POSTGRES_PASSWORD: postgres
     POSTGRES_DB: postgres
   volumes:
-    - docker://postgresql_14_data:/var/lib/postgresql/data
+  - docker://postgresql_14_data:/var/lib/postgresql/data
   restart: always
   resources:
     max_replicas: 1
@@ -18,5 +16,17 @@ service:
   limits:
     cpu: 1000m
     ram: 1Gi
-
-
+  ingress:
+    frontend:
+    - name: frontend-5432
+      options: []
+      bind:
+        port: '5432'
+        mode: tcp
+      default_backend: backend-5432
+    backend:
+    - name: backend-5432
+      bind:
+        port: '5432'
+        mode: tcp
+      balance: round_robin

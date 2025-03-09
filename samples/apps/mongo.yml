@@ -1,9 +1,20 @@
-#
+---
 service:
   name: mongo
   image: mongo:4.0
   command: "--smallfiles"
   network: bridge
-  ports:
-    - 27017:27017:tcp:round_robin
-
+  ingress:
+    frontend:
+    - name: frontend-27017
+      options: []
+      bind:
+        port: '27017'
+        mode: tcp
+      default_backend: backend-27017
+    backend:
+    - name: backend-27017
+      bind:
+        port: '27017'
+        mode: tcp
+      balance: round_robin

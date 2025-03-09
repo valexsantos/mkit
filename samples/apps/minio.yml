@@ -1,16 +1,42 @@
-#
+---
 service:
   name: minio
   image: minio/minio
   command: server /data --console-address ":9001"
   network: bridge
-  ports:
-    - 9001:9001:http:round_robin
-    - 9000:9000:tcp:round_robin
   environment:
     MINIO_ACCESS_KEY: minio
     MINIO_SECRET_KEY: minio123
   volumes:
-    - docker://minio_data:/data
-    #- /tmp/minio_data:/data
-
+  - docker://minio_data:/data
+  ingress:
+    frontend:
+    - name: frontend-9001
+      options: []
+      bind:
+        port: '9001'
+        mode: http
+      default_backend: backend-9001
+    - name: frontend-9000
+      options: []
+      bind:
+        port: '9000'
+        mode: tcp
+      default_backend: backend-9000
+    backend:
+    - name: backend-9001
+      bind:
+        port: '9001'
+        mode: http
+        options:
+        - cookie A check
+      balance: round_robin
+      options:
+      - option httpclose
+      - option forwardfor
+      - cookie JSESSIONID prefix
+    - name: backend-9000
+      bind:
+        port: '9000'
+        mode: tcp
+      balance: round_robin

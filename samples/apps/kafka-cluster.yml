@@ -1,21 +1,31 @@
-#
+---
 service:
   name: kafka-cluster
   network: kafka-cluster
   image: confluentinc/cp-kafka:7.1.6
-  ports:
-    - 9092:9092:tcp:round_robin
   volumes:
-    - docker://kafka_cluster_secrets:/etc/kafka/secrets
-    - docker://kafka_cluster_data:/var/lib/kafka/data
+  - docker://kafka_cluster_secrets:/etc/kafka/secrets
+  - docker://kafka_cluster_data:/var/lib/kafka/data
   environment:
     KAFKA_BROKER_ID: 1
     KAFKA_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
-    KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-cluster:9092
     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      # KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://kafka-schema-registry
     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
     KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-
+  ingress:
+    frontend:
+    - name: frontend-9092
+      options: []
+      bind:
+        port: '9092'
+        mode: tcp
+      default_backend: backend-9092
+    backend:
+    - name: backend-9092
+      bind:
+        port: '9092'
+        mode: tcp
+      balance: round_robin
