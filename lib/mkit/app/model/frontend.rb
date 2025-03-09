@@ -3,8 +3,8 @@ require 'mkit/exceptions'
 
 class Frontend  < ActiveRecord::Base
   belongs_to :ingress
-  serialize :options, JSON
-  serialize :bind_options, JSON
+  serialize :options, coder: JSON
+  serialize :bind_options, coder: JSON
   has_one :backend
 
   def self.create(yaml)
