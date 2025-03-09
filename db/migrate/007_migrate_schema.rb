@@ -41,6 +41,10 @@ class MigrateSchema < ActiveRecord::Migration[5.1]
         balance: port.load_bal
       }
 
+      if port.internal_port.nil? || port.internal_port.empty?
+        backend[:bind].delete(:port)
+      end
+
       if port.mode == 'http'
         a= [
           'option httpclose',
