@@ -16,7 +16,7 @@ class Frontend  < ActiveRecord::Base
     frontend.mode = yaml["bind"]["mode"] if yaml["bind"]["mode"]
     frontend.bind_options = yaml["bind"]["options"] if yaml["bind"]["options"]
     frontend.options = yaml["options"] if yaml["options"]
-    frontend.default_backend = yaml["use_backend"]
+    frontend.default_backend = yaml["default_backend"]
 
     has_ssl = !yaml["bind"]["ssl"].nil? && yaml["bind"]["ssl"].to_s.start_with?('true')
     frontend.ssl = has_ssl ? 'true' : 'false'
