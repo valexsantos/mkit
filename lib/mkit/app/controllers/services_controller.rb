@@ -30,7 +30,7 @@ class ServicesController < MKIt::Server
   get '/services/:id' do
     srv = find_by_id_or_name
     resp = if params[:format] == 'yaml'
-             srv.to_h({details: params[:details] == 'true'}).to_yaml
+             srv.to_h({details: params[:details] == 'true'}).to_yaml(line_width: -1)
            elsif params[:format] == 'json'
              JSON.pretty_generate(srv.to_h({details: params[:details] == 'true'}))
            else
@@ -107,7 +107,7 @@ class ServicesController < MKIt::Server
     if params[:file]
       tempfile = params[:file][:tempfile]
       yaml = YAML.safe_load(tempfile.read)
-      srv = migrate_service(yaml).to_yaml
+      srv = migrate_service(yaml).to_yaml(line_width: -1)
     end
     srv
   end
