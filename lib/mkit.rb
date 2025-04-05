@@ -138,13 +138,23 @@ module MKIt
     MKItLogger.info 'restoring operations...'
     # create interfaces of deployed apps  otherwise haproxy won't start
     Service.all.each do |srv|
-      srv.deploy_network
-      srv.update_status!
+      begin
+        srv.deploy_network
+        srv.update_status!
+      rescue => e
+        MKItLogger.warn "Error restoring service #{srv.name}: #{e.message}"
+      end
     end
     # daemontools would eventually start haproxy; systemd does not.
     # so, restart here.
-    MKItLogger.debug 'restarting proxy...'
-    MKIt::HAProxy.restart
+    restart_proxy = Thread.new do
+      MKItLogger.debug 'restarting proxy...'
+      MKIt::HAProxy.stop
+      sleep 10
+      MKIt::HAProxy.restart
+      MKItLogger.debug 'restarting proxy done.'
+    end
+    restart_proxy.run
   end
 
   def self.startup(options: {})
