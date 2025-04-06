@@ -176,6 +176,10 @@ service:
   resources:
     min_replicas: 1 # default value. Pods will be available on internal DNS as '<service_name>.internal'
     max_replicas: 1 # default value
+    limits:
+      cpu: 250m # cpu limit - 1000m represents 1 cpu core. minimum 10m. default is empty
+      memory: 250m # memory limit - default is empty
+      memory_swap: 250m # memory + swap limit - default is empty
   volumes:
     - docker://mkit_rabbitmq_data:/var/lib/rabbitmq # a docker volume - it will be created if it does not exists
     - /var/log/rabbitmq/logs:/var/log/rabbitmq # a local volume

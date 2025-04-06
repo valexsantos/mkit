@@ -1,5 +1,6 @@
 require 'mkit/app/model/volume'
 require 'mkit/app/model/ingress'
+require 'mkit/app/model/resource'
 require 'mkit/app/model/service_port'
 require 'mkit/app/model/service_config'
 require 'mkit/app/model/pod'
@@ -23,6 +24,7 @@ class Service < ActiveRecord::Base
   has_one  :lease, dependent: :destroy
   has_one  :dns_host, dependent: :destroy
   has_one  :ingress, dependent: :destroy
+  has_one  :resource, dependent: :destroy
 
   before_destroy :clean_up
 
@@ -64,7 +66,7 @@ class Service < ActiveRecord::Base
       srv.save!
       data = { service_id: srv.id, version: srv.version }
       # create pod
-      (1..srv.min_replicas).each { |i|
+      (1..srv.resource.min_replicas).each { |i|
         pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
         srv.pod << pd
         MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
@@ -77,14 +79,7 @@ class Service < ActiveRecord::Base
     self.image = config.image if config.image != self.image
     self.command = config.command if config.command != self.command
 
-    unless config.resources.nil?
-      self.max_replicas = config.resources.max_replicas unless config.resources.max_replicas.nil? || config.resources.max_replicas < 1
-      self.min_replicas = config.resources.min_replicas unless config.resources.min_replicas.nil? || config.resources.min_replicas < 1
-    else
-      self.min_replicas = 1
-      self.max_replicas = 1
-    end
-    self.max_replicas = self.min_replicas if self.min_replicas > self.max_replicas
+    self.resource = Resource.create(config.resources)
 
     # docker network
     if config.network.nil? || config.network.empty?
@@ -122,8 +117,7 @@ class Service < ActiveRecord::Base
       # destroy old pods...
       self.pod.destroy_all
       # create pod
-      data = { service_id: self.id, version: self.version }
-      (1..self.min_replicas).each { |i|
+      (1..self.resource.min_replicas).each { |i|
         pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
         self.pod << pd
         MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
@@ -276,12 +270,9 @@ class Service < ActiveRecord::Base
       }
     end
 
-    # ingress
     srv['ingress'] = self.ingress.to_h(options)
+    srv['resources'] = self.resource.to_h
 
-    srv['resources'] = {}
-    srv['resources']['min_replicas'] = self.min_replicas
-    srv['resources']['max_replicas'] = self.max_replicas
     srv['volumes'] = []
     self.volume.each { |v|
       if v.ctype ==  MKIt::CType::DOCKER_STORAGE.to_s

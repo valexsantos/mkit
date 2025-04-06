@@ -87,5 +87,20 @@ module MKIt
       x = MKIt::CmdRunner.run("docker volume inspect #{volume_name}")
       JSON.parse(x).first
     end
+
+    ##
+    # cpu limits
+    def to_docker_cpu_limit(k8s_cpu_limits)
+      if k8s_cpu_limits.nil?
+        nil
+      else
+        cpu_limit = k8s_cpu_limits.to_s
+        if cpu_limit.include?('m')
+          cpu_limit = cpu_limit.delete_suffix('m')
+          cpu_limit = (cpu_limit.to_f / 1000).to_s
+        end
+        cpu_limit
+      end
+    end
   end
 end
