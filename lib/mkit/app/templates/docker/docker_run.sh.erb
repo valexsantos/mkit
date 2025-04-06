@@ -1,1 +1,10 @@
-docker run -d --name <%=name%>  <%service.service_config&.select{ |x| x.ctype == MKIt::CType::ENVIRONMENT.to_s }.each { |env|%><%=" -e #{env.key}=\"#{env.value}\""%><%}%> <%service.volume&.each { |vol|%><%=" -v \"#{vol.name}:#{vol.path}\""%><%}%>  --network <%=service.pods_network%> --dns <%=service.my_dns%> <%=service.image%> <%=service.command unless service.command.nil?%>
+docker run -d --name <%=name%>  \
+  <%service.service_config&.select{ |x| x.ctype == MKIt::CType::ENVIRONMENT.to_s }.each { |env|%><%=" -e #{env.key}=\"#{env.value}\""%><%}%> \
+  <%service.volume&.each { |vol|%><%=" -v \"#{vol.name}:#{vol.path}\""%><%}%> \
+  --network <%=service.pods_network%> \
+  --dns <%=service.my_dns%> \
+  <%="--cpus #{to_docker_cpu_limit(service.resource.cpu_limits)}" unless service.resource.cpu_limits.nil?%> \
+  <%="--memory #{service.resource.memory_limits}" unless service.resource.memory_limits.nil?%> \
+  <%="--memory-swap #{service.resource.memory_swap_limits}" unless service.resource.memory_swap_limits.nil?%> \
+  <%=service.image%> \
+  <%=service.command unless service.command.nil?%>

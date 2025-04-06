@@ -19,7 +19,7 @@ module MKIt
       rescue PTY::ChildExited
         # nothing
       end
-      raise CmdRunnerException.new("command '#{cmd[0..30]}...' returned an error response") if !$?.nil? && $?.exitstatus != 0
+      raise CmdRunnerException.new("command '#{cmd[0..30]}...' returned an error [#{result}] (#{$?})") if !$?.nil? && $?.exitstatus != 0
       result
     end
   end

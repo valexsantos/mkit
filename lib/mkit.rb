@@ -147,14 +147,17 @@ module MKIt
     end
     # daemontools would eventually start haproxy; systemd does not.
     # so, restart here.
-    restart_proxy = Thread.new do
-      MKItLogger.debug 'restarting proxy...'
-      MKIt::HAProxy.stop
-      sleep 10
-      MKIt::HAProxy.restart
-      MKItLogger.debug 'restarting proxy done.'
+    Thread.new do
+      begin
+        MKItLogger.debug 'restarting proxy...'
+        MKIt::HAProxy.stop
+        sleep 10
+        MKIt::HAProxy.restart
+        MKItLogger.debug 'restarting proxy done.'
+      rescue => e
+        MKItLogger.error "Error in restart_proxy thread: #{e.message}"
+      end
     end
-    restart_proxy.run
   end
 
   def self.startup(options: {})

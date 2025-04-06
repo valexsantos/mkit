@@ -1,26 +1,14 @@
 ---
 service:
-  name: httpbin
-  image: mccutchen/go-httpbin
-  command: 
+  name: swiss-army-knife
+  image: leodotcloud/swiss-army-knife
+  command: swiss-army-knife
   network: bridge
   ingress:
     frontend:
-      - name: http-in-ssl
-        options:
-          - option httpclose
-          - option forwardfor
-        bind:
-          port: 443
-          mode: http
-          ssl: true
-          options:
-            - accept-proxy
-            - transparent
-            - defer-accept
-        default_backend: server
       - name: http-in
         options:
+          - option httpclose
           - option forwardfor
         bind:
           port: 80
@@ -41,9 +29,9 @@ service:
     min_replicas: 1
     max_replicas: 1
     limits:
-      cpu: 250m
-      memory: 250m
-      memory_swap: 250m
+      cpu: 500m
+      memory: 512m
+      memory_swap: 512m
   volumes: []
   environment:
     LOG4J_LEVEL: WARN
