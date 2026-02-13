@@ -11,6 +11,17 @@ A client is also included to access the API, e.g. `mkit ps`.
 
 The daemon is responsible for HAProxy pods routing configuration. It also provides the cluster DNS and manages the internal host interface and the pod instances. 
 
+## Features
+
+- **[Vault](docs/vault.md)** - Centralized secrets management with path-based references
+- **[Health Checks](docs/health-checks.md)** - Liveness and readiness probes
+- **[Auto-scaling](docs/auto-scaling.md)** - HPA-like horizontal pod autoscaling
+- **[Metrics](docs/metrics.md)** - Prometheus-compatible metrics endpoint
+- **[Backup & Restore](docs/backup-restore.md)** - Cluster state backup and recovery
+- **[Dry-run Mode](docs/dry-run.md)** - Preview configurations without applying
+
+See [docs/index.md](docs/index.md) for complete CLI reference. 
+
 ## Requirements
 
 * Ruby
@@ -120,74 +131,7 @@ mkit:
 my_id: unique_id # this id is generated running mkit init
 ```
 
-### Service
-
-```
-service:
-  name: rabbitmq # unique. Available on internal DNS as 'rabbitmq'
-  image: rabbitmq:3-management-alpine # image
-  network: bridge # docker network - it will be created if it does not exists
-  ingress:
-    # ingress configuration
-    # see https://docs.haproxy.org/3.1/configuration.html
-    frontend: # frontend section
-      - name: http-in-ssl # frontend name - must be unique
-        options: # frontend global section options
-          - option httpclose
-          - option forwardfor
-        bind:
-          port: 443 # to define a range (e.g. 8000-8080), backend `port` must be blank
-          ssl: true # ssl support - default is false
-          mode: http # tcp|http
-          cert: /etc/ssl/certs/server.crt # if empty uses mkit default crt file (mkit.pem)
-          options: # frontend bind section options
-            - accept-proxy
-            - transparent
-            - defer-accept
-        default_backend: admin # backend to use - must point to a backend name
-      - name: http-in
-        bind:
-          port: 80
-          mode: http
-        default_backend: admin
-      - name: server-in
-        bind:
-          port: 5672
-          mode: tcp
-        default_backend: server
-    backend: # backend section
-      - name: admin # backend name - must be unique
-        balance: round_robin # round_robin|least_conn - default is round_robin
-        options: # backend global section options
-          - option httpclose
-          - option forwardfor
-          - cookie JSESSIONID prefix
-        bind:
-          port: 15672 # if this backend is used by a frontend with a range port, this port must be blank
-          mode: http
-          options: # backend bind section options
-            - cookie A
-            - check
-      - name: server
-        balance: round_robin
-        bind:
-          port: 5672
-          mode: tcp
-  resources:
-    min_replicas: 1 # default value. Pods will be available on internal DNS as '<service_name>.internal'
-    max_replicas: 1 # default value
-    limits:
-      cpu: 250m # cpu limit - 1000m represents 1 cpu core. minimum 10m. default is empty
-      memory: 250m # memory limit - default is empty
-      memory_swap: 250m # memory + swap limit - default is empty
-  volumes:
-    - docker://mkit_rabbitmq_data:/var/lib/rabbitmq # a docker volume - it will be created if it does not exists
-    - /var/log/rabbitmq/logs:/var/log/rabbitmq # a local volume
-  environment:
-    RABBITMQ_DEFAULT_USER: admin
-    RABBITMQ_DEFAULT_PASS: admin
-    RABBITMQ_DEFAULT_VHOST: mkit
-```
+See [docs/service-configuration.md](docs/service-configuration.md) for complete service configuration reference.
 
 ## Running
 
@@ -227,6 +171,7 @@ status       show services status
 start        start service
 stop         stop service
 restart      restart service
+scale        scale service to specified replicas
 create       create new service
 update       update service
 get          print service configuration
@@ -236,6 +181,8 @@ exec         execute a command in a running pod
 logs         view service logs
 version      prints mkit client and server version
 proxy        haproxy status and control
+vault        vault secret management
+backup       backup and restore
 profile      mkit client configuration profile
 
 Run ' mkit help <command>' for specific command information.

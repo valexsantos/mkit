@@ -18,7 +18,7 @@
     uri: "/services"
 - cmd: status
   usage:
-    - "[service_id_or_name]"
+    - "[service_id_or_name] [-e]"
   help: show services status
   args:
     - name: id
@@ -27,6 +27,15 @@
         - Service id or name
       mandatory: false
       uri: "/<%=id%>"
+    - name: errors
+      help:
+        - -e
+        - show validation errors
+      mandatory: false
+      param: "<%=true%>"
+      type: flag
+      switch:
+        - "-e"
   request:
     verb: get
     uri: "/services"
@@ -69,6 +78,24 @@
   request:
     verb: put
     uri: "/services/<%=id%>/restart"
+- cmd: scale
+  usage:
+    - "<service_id_or_name> <replicas>"
+  help: scale service to specified number of replicas
+  args:
+    - name: id
+      help:
+        - id
+        - Service id or name
+      mandatory: true
+    - name: replicas
+      help:
+        - replicas
+        - Number of replicas
+      mandatory: true
+  request:
+    verb: put
+    uri: "/services/<%=id%>/scale"
 - cmd: create
   usage:
     - "<service.yaml>"
@@ -79,6 +106,15 @@
         - file
         - Service definition
       mandatory: true
+    - name: dry_run
+      help:
+        - --dry-run
+        - Preview service without creating
+      mandatory: false
+      param: "<%=true%>"
+      type: flag
+      switch:
+        - "--dry-run"
   request:
     verb: post
     uri: "/services"
@@ -92,6 +128,15 @@
         - file
         - Service definition
       mandatory: true
+    - name: dry_run
+      help:
+        - --dry-run
+        - Preview update without applying
+      mandatory: false
+      param: "<%=true%>"
+      type: flag
+      switch:
+        - "--dry-run"
   request:
     verb: put
     uri: "/services/<%=id%>"
@@ -307,6 +352,73 @@
       request:
         verb: get
         uri: "/mkit/proxy/status"
+- cmd: vault
+  usage:
+    - "<list|get|set|delete> [options]"
+  help: vault secret management
+  options:
+    - cmd: list
+      help: list all vault secrets
+      request:
+        verb: get
+        uri: "/vault"
+    - cmd: list
+      help: list vault secrets by scope
+      usage:
+        - "<scope>"
+      args:
+        - name: scope
+          help:
+            - scope
+            - Scope (services or mkit)
+          mandatory: true
+      request:
+        verb: get
+        uri: "/vault/<%=scope%>"
+    - cmd: get
+      help: get vault secret metadata
+      usage:
+        - "<scope>/<path>"
+      args:
+        - name: scope_path
+          help:
+            - scope_path
+            - Scope/path (e.g., services/my-app/database)
+          mandatory: true
+      request:
+        verb: get
+        uri: "/vault/<%=scope_path%>"
+    - cmd: set
+      help: set vault secret
+      usage:
+        - "<scope>/<path>#<key> <value>"
+      args:
+        - name: path_key
+          help:
+            - path_key
+            - Path and key (e.g., services/my-app/database#PASSWORD)
+          mandatory: true
+        - name: value
+          help:
+            - value
+            - Secret value
+          mandatory: true
+      request:
+        verb: post
+        uri: "/vault"
+    - cmd: delete
+      help: delete vault secret
+      usage:
+        - "<scope>/<path>#<key>"
+      args:
+        - name: path_key
+          help:
+            - path_key
+            - Path and key (e.g., services/my-app/database#PASSWORD)
+          mandatory: true
+      request:
+        verb: delete
+        uri: "/vault/<%=path_key%>"
 - cmd: profile
   usage:
     - "<[set <profile>]|[show]>"

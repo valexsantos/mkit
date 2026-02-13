@@ -13,8 +13,8 @@ require 'mkit/ctypes'
 require 'mkit/app/model/pool'
 require 'mkit/app/model/dns_host'
 require 'mkit/app/helpers/haproxy'
+require 'mkit/app/model/vault_secret'
 
-#
 class Service < ActiveRecord::Base
   has_many   :pod, dependent: :destroy
   has_many   :volume, dependent: :destroy
@@ -35,8 +35,8 @@ class Service < ActiveRecord::Base
   include MKIt::DockerHelper
 
   def self.create(yaml)
-    config = yaml["service"]
-    raise MKIt::ServiceAlreadyExists.new unless Service.find_by_name(config.name).nil?
+    config = yaml['service']
+    raise MKIt::ServiceAlreadyExists unless Service.find_by_name(config.name).nil?
 
     ActiveRecord::Base.transaction do
       srv = Service.new(
@@ -61,99 +61,115 @@ class Service < ActiveRecord::Base
 
       # configure
       srv.configure(config)
-      #
       srv.status = MKIt::Status::CREATED
       srv.save!
       data = { service_id: srv.id, version: srv.version }
       # create pod
-      (1..srv.resource.min_replicas).each { |i|
-        pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
+      (1..srv.resource.min_replicas).each do |_i|
+        pd = Pod.new(status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-', '')[0..11])
         srv.pod << pd
-        MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
-      }
+        MkitJob.publish(topic: :create_pod_saga, data: { pod_name: pd.name })
+      end
       srv
     end
   end
 
   def configure(config)
-    self.image = config.image if config.image != self.image
-    self.command = config.command if config.command != self.command
+    self.image = config.image if config.image != image
+    self.command = config.command if config.command != command
 
     self.resource = Resource.create(config.resources)
 
     # docker network
-    if config.network.nil? || config.network.empty?
-      self.pods_network="mkit"
-    else
-      self.pods_network=config.network
-    end
-    self.create_pods_network
+    self.pods_network = if config.network.nil? || config.network.empty?
+                          'mkit'
+                        else
+                          config.network
+                        end
+    create_pods_network
 
     # haproxy config
     self.ingress = Ingress.create(config.ingress)
 
+    # probes
+    self.liveness_probe = config.liveness_probe&.to_h&.to_json
+    self.readiness_probe = config.readiness_probe&.to_h&.to_json
+
     # volumes
     self.volume = []
-    config.volumes&.each { |volume|
-      self.add_volume(volume)
-    }
+    config.volumes&.each do |volume|
+      add_volume(volume)
+    end
     # environment
-    self.service_config=[]
-    config.environment&.each_pair { |key,value|
-      self.add_service_config(key, value)
-    }
-    self.volume.each { | volume |
+    self.service_config = []
+    config.environment&.each_pair do |key, value|
+      add_service_config(key, value)
+    end
+    self.volume.each do |volume|
       volume.deploy
-    }
+    end
   end
 
   def update!(yaml)
     ActiveRecord::Base.transaction do
-      config = yaml["service"]
-      raise MKIt::ServiceNameMismatch.new unless config.name == self.name
-      self.version+=1
-      self.configure(config)
+      config = yaml['service']
+      raise MKIt::ServiceNameMismatch unless config.name == name
+
+      self.version += 1
+      configure(config)
 
       # destroy old pods...
-      self.pod.destroy_all
+      pod.destroy_all
       # create pod
-      (1..self.resource.min_replicas).each { |i|
-        pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
-        self.pod << pd
-        MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
-      }
-      self.save
+      (1..resource.min_replicas).each do |_i|
+        pd = Pod.new(status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-', '')[0..11])
+        pod << pd
+        MkitJob.publish(topic: :create_pod_saga, data: { pod_name: pd.name })
+      end
+      save
     end
   end
 
   def create_pods_network
-    create_network(self.pods_network) unless network_exists?(self.pods_network)
+    create_network(pods_network) unless network_exists?(pods_network)
   end
 
   def deploy_network
     # create service interface...
-    self.lease.confirm
-    self.lease.up
+    lease.confirm
+    lease.up
   end
 
   def add_volume(volume_config)
     v = Volume.create(self, volume_config)
-    self.volume << v
+    volume << v
     v
   end
 
   def add_service_config(key, value)
     v = ServiceConfig.create(service: self, key: key, value: value)
-    self.service_config << v
+    service_config << v
     v
   end
 
   def current_configs
-    self.service_config&.select{ |x| x.ctype == MKIt::CType::ENVIRONMENT.to_s && x.version == self.version}
+    service_config&.select { |x| x.ctype == MKIt::CType::ENVIRONMENT.to_s && x.version == self.version }
   end
 
   def current_ports
-    self.service_port&.select{ |x| x.version == self.version}
+    service_port&.select { |x| x.version == self.version }
+  end
+
+  def liveness_probe_config
+    return nil unless liveness_probe
+
+    @liveness_probe_config ||= JSON.parse(liveness_probe)
+  end
+
+  def readiness_probe_config
+    return nil unless readiness_probe
+
+    @readiness_probe_config ||= JSON.parse(readiness_probe)
   end
 
   def my_dns
@@ -165,7 +181,7 @@ class Service < ActiveRecord::Base
   #  this will be the pod status
   def update_status!
     combined_status = nil
-    self.pod.each { |pod|
+    pod.each do |pod|
       child_status = pod.set_status_from_docker
       if combined_status
         case combined_status
@@ -188,27 +204,27 @@ class Service < ActiveRecord::Base
       else
         combined_status = child_status
       end
-    }
-    combined_status = MKIt::Status::CREATING unless combined_status
+    end
+    combined_status ||= MKIt::Status::CREATING
     self.status = combined_status
-    self.save
-    self.status
+    save
+    status
   end
 
   #
   # ha proxy configs & template
   #
   def update_proxy
-    MkitJob.publish(topic: :update_proxy_config, application_id: self.id, data: proxy_config)
+    MkitJob.publish(topic: :update_proxy_config, application_id: id, data: proxy_config)
   end
 
   def proxy_config
     # config
     haproxy = parse
-    my_addr = self.lease.ip.split('.')[3]
-    filename = "#{'%04i' % my_addr.to_i}_#{self.name}.cfg"
+    my_addr = lease.ip.split('.')[3]
+    filename = "#{format('%04i', my_addr.to_i)}_#{name}.cfg"
     MKItLogger.debug("haproxy config file: #{filename}")
-    {filename: filename, data: haproxy}
+    { filename: filename, data: haproxy }
   end
 
   def parse
@@ -216,87 +232,119 @@ class Service < ActiveRecord::Base
   end
 
   def clean_up
-    my_addr = self.lease.ip.split('.')[3]
-    filename = "#{'%04i' % my_addr.to_i}_#{self.name}.cfg"
-    MkitJob.publish(topic: :destroy_proxy_config, data: {filename: filename})
+    my_addr = lease.ip.split('.')[3]
+    filename = "#{format('%04i', my_addr.to_i)}_#{name}.cfg"
+    MkitJob.publish(topic: :destroy_proxy_config, data: { filename: filename })
   end
 
   def find_pod_by_id_or_name(pod_id)
     pod = self.pod.find_by(id: pod_id)
-    pod = self.pod.find_by(name: pod_id) unless pod
+    pod ||= self.pod.find_by(name: pod_id)
     pod
   end
+
   #
   # ctrl
   #
   def start
-    self.pod.each { |p|
-      MkitJob.publish(topic: :start_pod, service_id: self.id, pod_id: p.id)
-    }
+    pod.each do |p|
+      MkitJob.publish(topic: :start_pod, service_id: id, pod_id: p.id)
+    end
   end
 
   def stop
-    self.pod.each { |p|
-      MkitJob.publish(topic: :stop_pod, service_id: self.id, pod_id: p.id)
-    }
+    pod.each do |p|
+      MkitJob.publish(topic: :stop_pod, service_id: id, pod_id: p.id)
+    end
   end
 
   def log
-    out = ""
-    self.pod.each { |p|
-      out << "<<<< %s | %s >>>>\n" % [self.name, p.name]
+    out = ''
+    pod.each do |p|
+      out << format("<<<< %s | %s >>>>\n", name, p.name)
       out << logs(p.name)
-    }
+    end
     out
   end
+
   def to_h(options = {})
     details = options[:details] || false
+    show_errors = options[:errors] || false
 
     yaml = {}
     yaml['service'] = {}
     srv = yaml['service']
-    srv['name'] = self.name
-    srv['image'] = self.image
-    srv['command'] = self.command
-    srv['network'] = self.pods_network
+    srv['name'] = name
+    srv['image'] = image
+    srv['command'] = command
+    srv['network'] = pods_network
     if details
-      srv['status'] = self.status
+      srv['status'] = status
       srv['version'] = self.version
-      srv['ip'] = self.lease.ip
-      srv['dns'] = self.dns_host.name
+      srv['ip'] = lease.ip
+      srv['dns'] = dns_host.name
       srv['pods'] = []
-      self.pod.each { |p|
+      pod.each do |p|
         srv['pods'] << p.to_h
-      }
+      end
     end
 
-    srv['ingress'] = self.ingress.to_h(options)
-    srv['resources'] = self.resource.to_h
+    srv['errors'] = validation_errors_list if show_errors && validation_errors_list.any?
+
+    srv['ingress'] = ingress.to_h(options)
+    srv['resources'] = resource.to_h
 
     srv['volumes'] = []
-    self.volume.each { |v|
-      if v.ctype ==  MKIt::CType::DOCKER_STORAGE.to_s
+    volume.each do |v|
+      if v.ctype == MKIt::CType::DOCKER_STORAGE.to_s
         srv['volumes'] << "docker://#{v.name}:#{v.path}"
-      elsif v.ctype ==  MKIt::CType::LOCAL_STORAGE.to_s
+      elsif v.ctype == MKIt::CType::LOCAL_STORAGE.to_s
         srv['volumes'] << "#{v.name}:#{v.path}"
       end
-    }
+    end
     srv['environment'] = {}
-    self.service_config.each { |c|
+    service_config.each do |c|
       srv['environment'][c.key] = "#{c.value}"
-    }
+    end
     yaml
   end
 
   def as_json(options = {})
     srv = super
-    a=[:pod, :volume, :service_config, :ingress]
-    a.each { | k | 
+    a = %i[pod volume service_config ingress]
+    a.each do |k|
       srv[k] ||= []
-      self.send(k).each { |v| 
+      send(k).each do |v|
         srv[k] << v.as_json
-      }
-    }
+      end
+    end
     srv
+  end
+
+  def validate_vault!
+    errors = []
+    return errors unless service_config
+
+    service_config.select { |x| x.ctype == MKIt::CType::ENVIRONMENT.to_s }.each do |config|
+      next unless config.value.to_s.start_with?('vault://')
+
+      validation = VaultSecret.validate_path(config.value)
+      errors << validation[:error] unless validation[:valid]
+    end
+
+    if errors.any?
+      self.validation_errors = errors.join('; ')
+      save
+    else
+      self.validation_errors = nil
+      save
+    end
+    errors
+  end
+
+  def validation_errors_list
+    return [] if validation_errors.nil? || validation_errors.empty?
+
+    validation_errors.split('; ')
   end
 end

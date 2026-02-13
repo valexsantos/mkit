@@ -19,6 +19,7 @@ require_relative 'mkit/mkit_dns'
 require_relative 'mkit/pods/docker_listener'
 require 'mkit/app/helpers/haproxy'
 require 'mkit/app/controllers/services_controller'
+require 'mkit/app/controllers/vault_controller'
 require 'mkit/app/controllers/mkitjobs_controller'
 require 'mkit/app/controllers/mkit_controller'
 require 'mkit/mkit_interface'
@@ -107,7 +108,7 @@ module MKIt
   def self.options(server)
     if @ssl
       ssl_options = {
-        private_key_file:  @private_key_file,
+        private_key_file: @private_key_file,
         cert_chain_file: @cert_chain_file,
         verify_peer: @verify_peer
       }
@@ -129,34 +130,30 @@ module MKIt
   end
 
   def self.migrate
-    if ActiveRecord::Base.connection.migration_context.needs_migration?
+    return unless ActiveRecord::Base.connection.migration_context.needs_migration?
+
       ActiveRecord::Base.connection.migration_context.migrate
-    end
   end
 
   def self.restore_operation
     MKItLogger.info 'restoring operations...'
     # create interfaces of deployed apps  otherwise haproxy won't start
     Service.all.each do |srv|
-      begin
         srv.deploy_network
         srv.update_status!
-      rescue => e
+    rescue StandardError => e
         MKItLogger.warn "Error restoring service #{srv.name}: #{e.message}"
-      end
     end
     # daemontools would eventually start haproxy; systemd does not.
     # so, restart here.
     Thread.new do
-      begin
         MKItLogger.debug 'restarting proxy...'
         MKIt::HAProxy.stop
         sleep 10
         MKIt::HAProxy.restart
         MKItLogger.debug 'restarting proxy done.'
-      rescue => e
+    rescue StandardError => e
         MKItLogger.error "Error in restart_proxy thread: #{e.message}"
-      end
     end
   end
 
@@ -180,6 +177,9 @@ module MKIt
     System.register(:docker_listener, memoize: true) do
       MKIt::DockerListener.new
     end
+    System.register(:health_check_scheduler, memoize: true) do
+      MKIt::HealthCheckScheduler.new
+    end
     # watchdog feature is to be re-evaluated
     # System.register(:watchdog, memoize: true) {
     #  MKIt::WatchdogManager.new
@@ -190,6 +190,7 @@ module MKIt
     SagaManager.register_workers
     System[:job_manager].start
     System[:docker_listener].start
+    System[:health_check_scheduler].start
     # watchdog feature is to be re-evaluated
     # System[:watchdog].start
     System[:mkit_dns].run

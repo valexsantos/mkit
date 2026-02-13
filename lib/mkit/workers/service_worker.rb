@@ -1,10 +1,7 @@
-
-
 module MKIt
   class ServiceWorker < AWorker
-
     def topics
-      %w{start_service stop_service update_service delete_service}
+      %w[start_service stop_service update_service delete_service]
     end
 
     def do_the(job)
@@ -12,6 +9,13 @@ module MKIt
       srv = Service.find(job.service_id)
       case job.topic.to_sym
       when :start_service
+        errors = srv.validate_vault!
+        if errors.any?
+          MKItLogger.error("Service #{srv.name} has vault validation errors: #{errors.join(', ')}")
+          srv.status = MKIt::Status::ERROR
+          srv.save
+          return
+        end
         srv.start
       when :stop_service
         srv.stop
@@ -20,10 +24,8 @@ module MKIt
       when :delete_service
         Service.destroy(job.service_id)
       else
-        MKItLogger.info("#{self.class} <#{job.topic}> <<TODO>> job #{job.inspect}....")
+        MKItLogger.info("#{self.class} <<TODO>> job #{job.inspect}....")
       end
     end
-
   end
 end
-

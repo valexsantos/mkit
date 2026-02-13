@@ -117,11 +117,30 @@ class MKItClient
       raise InvalidParametersException.new('File not found.', @parser.find_command('create'))
     end
 
-    yaml = YAML.load_file(request_data[:file])
+    yaml = YAML.safe_load(File.read(request_data[:file]))
     if yaml['service'].nil?
       raise InvalidParametersException.new('Invalid configuration file', @parser.find_command('create'))
     else
-      request(request, request_data)
+      if request_data[:dry_run]
+        validate_preview(yaml)
+      else
+        request(request, request_data)
+      end
+    end
+  end
+
+  def validate_preview(yaml)
+    require 'mkit/validators/service_validator'
+    errors = MKIt::Validators::ServiceSchema.validate(yaml)
+    if errors.empty?
+      puts "Service configuration is valid."
+      puts "Preview (dry-run):"
+      puts yaml.to_yaml(line_width: -1)
+      { valid: true, preview: yaml }
+    else
+      puts "Validation errors:"
+      errors.each { |e| puts "  - #{e}" }
+      { valid: false, errors: errors }
     end
   end
 
@@ -130,13 +149,17 @@ class MKItClient
       raise InvalidParametersException.new('File not found.', @parser.find_command('update'))
     end
 
-    yaml = YAML.load_file(request_data[:file])
+    yaml = YAML.safe_load(File.read(request_data[:file]))
     if yaml['service'].nil?
       raise InvalidParametersException.new('Invalid configuration file', @parser.find_command('update'))
     else
-      id = yaml['service']['name']
-      request_data[:id] = id
-      request(request, request_data)
+      if request_data[:dry_run]
+        validate_preview(yaml)
+      else
+        id = yaml['service']['name']
+        request_data[:id] = id
+        request(request, request_data)
+      end
     end
   end
 

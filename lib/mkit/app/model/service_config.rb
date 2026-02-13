@@ -1,4 +1,5 @@
 require 'mkit/ctypes'
+require 'mkit/app/model/vault_secret'
 
 class ServiceConfig < ActiveRecord::Base
   belongs_to :service
@@ -12,5 +13,8 @@ class ServiceConfig < ActiveRecord::Base
       ctype: ctype
     )
   end
-end
 
+  def resolved_value
+    VaultSecret.resolve(value)
+  end
+end

@@ -1,13 +1,10 @@
-#
 module MKIt
   class PodWorker < AWorker
-
     def topics
-      %w{pod_network_connected pod_network_disconnected
-          pod_unhealthy 
+      %w[pod_network_connected pod_network_disconnected
+          pod_unhealthy
           start_pod stop_pod update_pod deploy_pod destroy_pod
-          pod_ip_updated pod_destroyed
-      }
+          pod_ip_updated pod_destroyed restart_pod]
     end
 
     def do_the(job)
@@ -23,19 +20,17 @@ module MKIt
       when :destroy_pod
         pod.stop
         pod.destroy
+      when :restart_pod
+        MKItLogger.warn("Restarting pod #{pod.name} due to liveness probe failure")
+        pod.stop
+        pod.start
       when :pod_destroyed
-        if Service.exists?(job.service_id)
-          MkitJob.publish(topic: :update_proxy_config, service_id: job.service_id)
-        end
+        MkitJob.publish(topic: :update_proxy_config, service_id: job.service_id) if Service.exists?(job.service_id)
       when :pod_ip_updated
-        if Service.exists?(job.service_id)
-          MkitJob.publish(topic: :update_proxy_config, service_id: job.service_id)
-        end
+        MkitJob.publish(topic: :update_proxy_config, service_id: job.service_id) if Service.exists?(job.service_id)
       else
         MKItLogger.info("#{self.class} <<TODO>> job #{job.inspect}....")
       end
     end
-
   end
 end
-

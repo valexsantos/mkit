@@ -6,6 +6,7 @@ require 'mkit/app/helpers/params_helper'
 require 'mkit/app/helpers/migrations_helper'
 require 'mkit/pods/docker_log_listener'
 require 'mkit/pods/docker_exec_command'
+require 'mkit/validators/service_validator'
 
 class ServicesController < MKIt::Server
   helpers MKIt::ServicesHelper
@@ -15,24 +16,34 @@ class ServicesController < MKIt::Server
   # curl localhost:4567/services
   get '/services' do
     verbose = params[:verbose] == 'true'
+    show_errors = params[:errors] == 'true'
 
     if params[:id]
       redirect "/services/#{params[:id]}"
     elsif params[:name]
       srv = find_by_id_or_name
-      format_response(srv, verbose)
+      options = { details: verbose, errors: show_errors }
+      format_response(srv.to_h(options))
     else
       services = Service.all
-      format_response(services, verbose)
+      if show_errors
+        services.map { |s| s.to_h(details: verbose, errors: true) }
+      else
+        services.map { |s| s.to_h(details: verbose) }
+      end
     end
   end
 
   get '/services/:id' do
     srv = find_by_id_or_name
+    options = {
+      details: params[:details] == 'true',
+      errors: params[:errors] == 'true'
+    }
     resp = if params[:format] == 'yaml'
-             srv.to_h({details: params[:details] == 'true'}).to_yaml(line_width: -1)
+             srv.to_h(options).to_yaml(line_width: -1)
            elsif params[:format] == 'json'
-             JSON.pretty_generate(srv.to_h({details: params[:details] == 'true'}))
+             JSON.pretty_generate(srv.to_h(options))
            else
              format_response(srv)
            end
@@ -45,14 +56,14 @@ class ServicesController < MKIt::Server
       srv.log
     else
       pod = find_srv_pod_by_id_or_name(srv)
-      options_parameter = build_options_hash(params: params, options: [
-        :nr_lines, :pods, :follow, :details, :timestamps, :clear
-      ])
+      options_parameter = build_options_hash(params: params, options: %i[
+                                               nr_lines pods follow details timestamps clear
+                                             ])
       request.websocket do |ws|
         listener = nil
         ws.onopen do
           settings.sockets << ws
-          ws.send("<<<< %s | %s >>>>\n" % [srv.name, pod.name])
+          ws.send(format("<<<< %s | %s >>>>\n", srv.name, pod.name))
           listener = MKIt::DockerLogListener.new(pod, ws, options: options_parameter)
           settings.listeners << listener
           listener.register
@@ -79,6 +90,10 @@ class ServicesController < MKIt::Server
     if params[:file]
       tempfile = params[:file][:tempfile]
       yaml = YAML.safe_load(tempfile.read)
+      errors = MKIt::Validators::ServiceSchema.validate(yaml)
+      errors += MKIt::Validators::ServiceSchema.validate_vault_refs(yaml)
+      raise MKIt::InvalidConfigurationException, "Validation failed: #{errors.join(', ')}" unless errors.empty?
+
       srv.update!(yaml.to_o)
     end
     format_response(srv)
@@ -97,6 +112,10 @@ class ServicesController < MKIt::Server
     if params[:file]
       tempfile = params[:file][:tempfile]
       yaml = YAML.safe_load(tempfile.read)
+      errors = MKIt::Validators::ServiceSchema.validate(yaml)
+      errors += MKIt::Validators::ServiceSchema.validate_vault_refs(yaml)
+      raise MKIt::InvalidConfigurationException, "Validation failed: #{errors.join(', ')}" unless errors.empty?
+
       srv = Service.create(yaml.to_o)
     end
     format_response(srv)
@@ -136,12 +155,39 @@ class ServicesController < MKIt::Server
     format_response(srv)
   end
 
+  put '/services/:id/scale' do
+    srv = find_by_id_or_name
+    replicas = params[:replicas].to_i
+
+    raise MKIt::InvalidConfigurationException, 'Replicas must be between 1 and 10' if replicas < 1 || replicas > 10
+
+    current_count = srv.pod.count
+    diff = replicas - current_count
+
+    if diff > 0
+      diff.times do
+        pd = Pod.new(status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-', '')[0..11])
+        srv.pod << pd
+        MkitJob.publish(topic: :create_pod_saga, data: { pod_name: pd.name })
+      end
+    elsif diff < 0
+      (-diff).times do
+        pod = srv.pod.last
+        pod.destroy if pod
+      end
+    end
+
+    format_response(srv.to_h(details: true))
+  end
+
   get '/services/:id/pods/exec' do
     srv = find_by_id_or_name
-    if request.websocket?
+    raise MKIt::BaseException.new(400, 'Bad request') unless request.websocket?
+
       pod = find_srv_pod_by_id_or_name(srv)
-      options_parameter = build_options_hash(params: params, options: [:varargs, :interactive, :detached])
-      raise MKIt::BaseException.new(400, "Missing parameters") unless options_parameter[:varargs]
+      options_parameter = build_options_hash(params: params, options: %i[varargs interactive detached])
+      raise MKIt::BaseException.new(400, 'Missing parameters') unless options_parameter[:varargs]
+
       options_parameter[:varargs] = JSON.parse(params['varargs'])
       request.websocket do |ws|
         listener = nil
@@ -161,8 +207,5 @@ class ServicesController < MKIt::Server
           end
         end
       end
-    else
-      raise MKIt::BaseException.new(400, "Bad request")
-    end
   end
 end
