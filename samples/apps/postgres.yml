@@ -7,6 +7,8 @@ service:
     POSTGRES_USER: postgres
     POSTGRES_PASSWORD: postgres
     POSTGRES_DB: postgres
+    # TCP keepalive settings for connection stability
+    POSTGRES_HOST_AUTH_METHOD: md5
   volumes:
   - docker://postgresql_14_data:/var/lib/postgresql/data
   restart: always
@@ -15,18 +17,36 @@ service:
     min_replicas: 1
   limits:
     cpu: 1000m
-    ram: 1Gi
+    memory: 1G 
+    memory_swap: 1G
   ingress:
     frontend:
     - name: frontend-5432
-      options: []
+      options:
+      - timeout client 3600s
+      - maxconn 4096
+      - option tcplog
       bind:
         port: '5432'
         mode: tcp
+        options: []
       default_backend: backend-5432
     backend:
     - name: backend-5432
+      balance: round_robin
+      options:
+      - option tcp-check
+      - option tcpka
+      - option redispatch
+      - timeout connect 10s
+      - timeout client 3600s
+      - timeout server 3600s
+      - retries 3
       bind:
         port: '5432'
         mode: tcp
-      balance: round_robin
+        options:
+        - check
+        - inter 10s
+        - fall 3
+        - rise 2
