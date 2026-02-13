@@ -18,6 +18,7 @@ The daemon is responsible for HAProxy pods routing configuration. It also provid
 - **[Auto-scaling](docs/auto-scaling.md)** - HPA-like horizontal pod autoscaling
 - **[Metrics](docs/metrics.md)** - Prometheus-compatible metrics endpoint
 - **[Backup & Restore](docs/backup-restore.md)** - Cluster state backup and recovery
+- **[PersistentVolumes](docs/persistent-volumes.md)** - Persistent storage management
 - **[Dry-run Mode](docs/dry-run.md)** - Preview configurations without applying
 
 See [docs/index.md](docs/index.md) for complete CLI reference. 

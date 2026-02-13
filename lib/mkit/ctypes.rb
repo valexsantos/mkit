@@ -1,5 +1,3 @@
-#
-#
 module MKIt
     class MKItCType
       def initialize(status)
@@ -10,11 +8,12 @@ module MKIt
         @status.downcase
       end
     end
-  
+
     module CType
         ENVIRONMENT = MKIt::MKItCType.new(:environment)
         DOCKER_STORAGE = MKIt::MKItCType.new(:docker)
         LOCAL_STORAGE = MKIt::MKItCType.new(:local)
+        PERSISTENT_VOLUME = MKIt::MKItCType.new(:persistent)
 
         NETWORK_SPECIFIC = MKIt::MKItCType.new(:specific)
         NETWORK_BRIDGE = MKIt::MKItCType.new(:bridge)

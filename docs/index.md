@@ -14,6 +14,7 @@
 - [Metrics](metrics.md) - Prometheus-compatible metrics endpoint
 - [Backup & Restore](backup-restore.md) - Cluster state backup and recovery
 - [Dry-run Mode](dry-run.md) - Preview configurations without applying
+- [PersistentVolumes](persistent-volumes.md) - Persistent storage management
 
 ## CLI Commands
 
@@ -56,6 +57,13 @@ mkit vault delete <path>#<key>       # Delete secret
 mkit backup create <name>    # Create backup
 mkit backup list             # List backups
 mkit backup restore <path>   # Restore backup
+```
+
+### Volumes
+```bash
+mkit volume list             # List volumes
+mkit volume create <name> <capacity>  # Create volume
+mkit volume delete <name>   # Delete volume
 ```
 
 ### Other

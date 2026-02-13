@@ -56,7 +56,7 @@ module MKIt
               },
               'volumes' => {
                 'type' => 'array',
-                'items' => { 'type' => 'string' }
+                'items' => { 'type' => 'string', 'pattern' => '^(docker:\/\/|persistent:\/\/|/).*$' }
               },
               'environment' => {
                 'type' => 'object',

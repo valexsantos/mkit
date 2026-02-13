@@ -419,6 +419,65 @@
       request:
         verb: delete
         uri: "/vault/<%=path_key%>"
+- cmd: volume
+  usage:
+    - "<list|create|delete> [options]"
+  help: persistent volume management
+  options:
+    - cmd: list
+      help: list all persistent volumes
+      request:
+        verb: get
+        uri: "/volumes"
+    - cmd: create
+      help: create persistent volume
+      usage:
+        - "<name> <capacity>"
+      args:
+        - name: name
+          help:
+            - name
+            - Volume name
+          mandatory: true
+        - name: capacity
+          help:
+            - capacity
+            - Volume capacity (e.g., 10Gi)
+          mandatory: true
+        - name: reclaim_policy
+          help:
+            - -r
+            - Reclaim policy (Retain or Delete)
+          mandatory: false
+          param: "<%=reclaim_policy%>"
+          type: flag
+          switch:
+            - "-r"
+        - name: storage_class
+          help:
+            - -s
+            - Storage class
+          mandatory: false
+          param: "<%=storage_class%>"
+          type: flag
+          switch:
+            - "-s"
+      request:
+        verb: post
+        uri: "/volumes"
+    - cmd: delete
+      help: delete persistent volume
+      usage:
+        - "<name>"
+      args:
+        - name: name
+          help:
+            - name
+            - Volume name
+          mandatory: true
+      request:
+        verb: delete
+        uri: "/volumes/<%=name%>"
 - cmd: profile
   usage:
     - "<[set <profile>]|[show]>"

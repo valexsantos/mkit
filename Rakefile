@@ -53,4 +53,9 @@ task :console do
   Pry.start
 end
 
+desc 'Run tests'
+task :test do
+  Dir.glob('spec/*_spec.rb').each { |f| require_relative f }
+end
+
 StandaloneMigrations::Tasks.load_tasks
