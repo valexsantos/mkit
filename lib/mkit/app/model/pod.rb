@@ -1,4 +1,3 @@
-require 'mkit/app/helpers/erb_helper'
 require 'mkit/app/helpers/docker_helper'
 require 'mkit/app/model/service'
 require 'mkit/status'
@@ -9,7 +8,6 @@ class Pod < ActiveRecord::Base
 
   before_destroy :clean_up
 
-  include MKIt::ERBHelper
   include MKIt::DockerHelper
 
   def update_ip
@@ -53,8 +51,8 @@ class Pod < ActiveRecord::Base
     self.status
   end
 
-  def parse
-    parse_model(MKIt::Templates::DOCKER_RUN).result(binding)
+  def container_spec
+    MKIt::DockerContainerSpec.new(name: self.name, service: self.service)
   end
 
   def start

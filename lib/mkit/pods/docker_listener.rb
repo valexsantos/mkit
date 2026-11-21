@@ -1,9 +1,8 @@
-require 'pty'
 require 'mkit/status'
-require "mkit/cmd/shell_client"
+require 'mkit/docker_client'
 
 #
-# https://docs.docker.com/engine/reference/commandline/events
+# https://docs.docker.com/engine/api/v1.43/#tag/System/operation/SystemEvents
 require 'mkit/app/helpers/docker_helper'
 module MKIt
   class StopThread < RuntimeError; end
@@ -11,9 +10,10 @@ module MKIt
   class DockerListener
     include MKIt::DockerHelper
 
+    RECONNECT_DELAY = 2
+
     def initialize
       @queue = Queue.new
-      @listener = ShellClient.new(command: "docker events --format '{{json .}}'")
     end
 
     def enqueue(msg)
@@ -26,8 +26,8 @@ module MKIt
     end
 
     def stop
-      @listener.unregister if @listener
-      @consumer.raise StopThread.new
+      @listener&.kill
+      @consumer&.raise StopThread.new
       MKItLogger.info("docker listener stopped")
     end
 
@@ -114,8 +114,19 @@ module MKIt
     end
 
     def register_listener
-      @listener.register do |stdout, stdin, pid|
-        stdout.each { |line| enqueue JSON.parse(line).to_o }
+      @listener = Thread.new { listen }
+    end
+
+    # Streams /events; reconnects when the stream drops.
+    def listen
+      loop do
+        begin
+          MKIt::DockerClient.default.stream('/events') { |event| enqueue event.to_o }
+          MKItLogger.warn('docker event stream closed, reconnecting')
+        rescue StandardError => e
+          MKItLogger.warn("docker event stream error: #{e.message}, reconnecting")
+        end
+        sleep(RECONNECT_DELAY)
       end
     end
   end
