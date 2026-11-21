@@ -11,6 +11,8 @@ mkit:
       restart: systemctl restart haproxy
       status:  systemctl status  haproxy
       bin: /usr/sbin/haproxy
+  docker:
+    socket: /var/run/docker.sock
   database:
     env: development
   clients:

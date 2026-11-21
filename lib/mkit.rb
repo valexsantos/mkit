@@ -78,6 +78,7 @@ module MKIt
 
     # load configuration
     MKIt::Initializers.load_my_configuration
+    MKIt::DockerClient.configure(socket: MKIt::Config.mkit.docker&.socket)
     # cert
     MKIt::EasySSL.create_self_certificate(@config_dir)
     #

@@ -14,12 +14,13 @@ module MKIt
       @default ||= new
     end
 
-    def self.reset_default!
-      @default = nil
+    # Sets the socket used by .default (mkit_config.yml: mkit.docker.socket).
+    def self.configure(socket:)
+      @default = new(socket: socket)
     end
 
     def initialize(socket: nil)
-      @socket = socket || socket_from_env
+      @socket = socket || DEFAULT_SOCKET
     end
 
     # Returns parsed JSON (or raw body when not JSON); nil when not found (404).
@@ -83,11 +84,6 @@ module MKIt
     end
 
     private
-
-    def socket_from_env
-      host = ENV['DOCKER_HOST'].to_s
-      host.start_with?('unix://') ? host.sub('unix://', '') : DEFAULT_SOCKET
-    end
 
     def connection(read_timeout: 60)
       http = NetX::HTTPUnix.new("unix://#{@socket}")
