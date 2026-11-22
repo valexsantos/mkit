@@ -2,7 +2,7 @@
 
 This is micro kubernetes(tm) on Ruby(tm), a simple tool to deploy containers to mimic a (very) minimalistic k8 cluster with a nice REST API.
 
-It's also a frontend for `docker`, providing an easier way for your services to be locally available, without the need to care about local `ports` availability.
+MKIt removes the port conflicts of running containers locally: every service gets its own IP and DNS name, so you can run any services on their default ports without remapping anything by hand.
 
 It contains an internal DNS and uses HAProxy as ingress for Pod access.
 The database is a simple sqlite3 db and the server is a Sinatra based application.
