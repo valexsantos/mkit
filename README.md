@@ -60,8 +60,9 @@ mkit:
       reload:  systemctl reload  haproxy
       restart: systemctl restart haproxy
       status:  systemctl status  haproxy
-  docker:
-    socket: /var/run/docker.sock
+  container:
+    runtime: docker # container runtime
+    socket: /var/run/docker.sock # runtime API unix socket (default: the runtime's default socket)
   database:
     env: development
   clients:
