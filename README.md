@@ -61,7 +61,7 @@ mkit:
       restart: systemctl restart haproxy
       status:  systemctl status  haproxy
   container:
-    runtime: docker # container runtime
+    runtime: docker # container runtime - default: docker
     socket: /var/run/docker.sock # runtime API unix socket (default: the runtime's default socket)
   database:
     env: development
