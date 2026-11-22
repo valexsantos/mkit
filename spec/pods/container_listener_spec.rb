@@ -12,7 +12,8 @@ describe MKIt::ContainerListener do
   let(:api) { OpenStruct.new(containers: containers, events: events) }
   let(:service) { mock('service') }
   let(:pod) { stub('pod', service: service, name: 'web') }
-  let(:listener) { described_class.new(api: api) }
+  let(:reconciler) { stub('reconciler', call: []) }
+  let(:listener) { described_class.new(api: api, reconciler: reconciler) }
 
   def event(kind, action, id: 'abc', name: 'web')
     MKIt::Container::Event.new(kind: kind, action: action, container_id: id, container_name: name)
@@ -181,6 +182,28 @@ describe MKIt::ContainerListener do
   end
 
   describe 'event stream' do
+    it 'reconciles the pods before every subscription, at startup and after each reconnect' do
+      calls = []
+      reconciler.stubs(:call).with { calls << :reconcile }
+      events.stubs(:each).with { calls << :subscribe }.raises(MKIt::Container::Error, 'gone')
+      listener.stubs(:sleep)
+      thread = Thread.new { listener.send(:listen) }
+      Timeout.timeout(2) { sleep 0.01 until calls.size >= 4 }
+      thread.kill
+      assert_equal %i[reconcile subscribe reconcile subscribe], calls.first(4)
+    end
+
+    it 'keeps listening when the reconciliation fails' do
+      reconciler.stubs(:call).raises(StandardError, 'db locked')
+      e = event(:container, :start)
+      events.stubs(:each).yields(e).then.raises(MKIt::Container::Error, 'gone')
+      listener.stubs(:sleep)
+      thread = Thread.new { listener.send(:listen) }
+      queue = listener.instance_variable_get(:@queue)
+      Timeout.timeout(2) { assert_same e, queue.pop }
+      thread.kill
+    end
+
     it 'enqueues the events and reconnects when the stream ends' do
       e = event(:container, :start)
       events.stubs(:each).yields(e).then.raises(MKIt::Container::Error, 'gone')

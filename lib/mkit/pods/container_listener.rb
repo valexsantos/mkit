@@ -1,5 +1,6 @@
 require 'mkit/status'
 require 'mkit/container/registry'
+require 'mkit/pods/pod_reconciler'
 
 module MKIt
   class StopThread < RuntimeError; end
@@ -14,8 +15,9 @@ module MKIt
     # exit codes of a process ended by SIGKILL / SIGTERM (e.g. stop, kill, oom)
     SIGNAL_EXIT_CODES = [137, 143].freeze
 
-    def initialize(api: Container::Registry.api)
+    def initialize(api: Container::Registry.api, reconciler: PodReconciler.new(containers: api.containers))
       @api = api
+      @reconciler = reconciler
       @queue = Queue.new
     end
 
@@ -157,14 +159,22 @@ module MKIt
       true
     end
 
+    def reconcile
+      @reconciler.call
+    rescue StandardError => e
+      MKItLogger.warn("could not reconcile the pods: #{e.message}")
+    end
+
     def register_listener
       @listener = Thread.new { listen }
     end
 
-    # Streams the runtime events; reconnects when the stream drops.
+    # Streams the runtime events; reconnects when the stream drops. The events lost while it was
+    # down (or before the daemon started) are recovered by reconciling the pods before each subscription.
     def listen
       loop do
         begin
+          reconcile
           @api.events.each { |event| enqueue event }
           MKItLogger.warn('container event stream closed, reconnecting')
         rescue StandardError => e
