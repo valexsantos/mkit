@@ -64,12 +64,8 @@ class Service < ActiveRecord::Base
       srv.status = MKIt::Status::CREATED
       srv.save!
       data = { service_id: srv.id, version: srv.version }
-      # create pod
-      (1..srv.resource.min_replicas).each { |i|
-        pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
-        srv.pod << pd
-        MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
-      }
+      # create pods
+      srv.spawn_pods(srv.resource.min_replicas)
       srv
     end
   end
@@ -115,12 +111,8 @@ class Service < ActiveRecord::Base
 
       # destroy old pods...
       self.pod.destroy_all
-      # create pod
-      (1..self.resource.min_replicas).each { |i|
-        pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
-        self.pod << pd
-        MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
-      }
+      # create pods
+      self.spawn_pods(self.resource.min_replicas)
       self.save
     end
   end
@@ -241,10 +233,34 @@ class Service < ActiveRecord::Base
   #
   # ctrl
   #
+  # Starts the service, repairing it first: the pods missing to reach min_replicas are created and so is
+  # the network (both can be gone, e.g. after a `docker rm` / `docker network rm`). The pods that already
+  # exist are started; one without container is recreated by Pod#start.
   def start
-    self.pod.each { |p|
+    existing = self.pod.to_a
+    self.create_pods_network
+    self.spawn_pods(missing_pods)
+    existing.each { |p|
       MkitJob.publish(topic: :start_pod, service_id: self.id, pod_id: p.id)
     }
+  end
+
+  def min_replicas
+    self.resource&.min_replicas || 1
+  end
+
+  # pods needed to reach min_replicas
+  def missing_pods
+    [min_replicas - self.pod.size, 0].max
+  end
+
+  # Creates `count` pods and publishes the saga that creates (and starts) their containers.
+  def spawn_pods(count)
+    count.times do
+      pd = Pod.new(status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-', '')[0..11])
+      self.pod << pd
+      MkitJob.publish(topic: :create_pod_saga, data: { pod_name: pd.name })
+    end
   end
 
   def stop

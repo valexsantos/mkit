@@ -62,8 +62,15 @@ class Pod < ActiveRecord::Base
     MKIt::Container::Spec.new(name: self.name, service: self.service)
   end
 
+  # Starts the container; recreates it when it does not exist (e.g. removed with `docker rm`).
   def start
-    containers.start(self.name) unless container&.running?
+    info = container
+    if info.nil?
+      MKItLogger.warn("pod #{self.name} has no container, creating it")
+      MkitJob.publish(topic: :create_pod_saga, data: { pod_name: self.name })
+    elsif !info.running?
+      containers.start(self.name)
+    end
   end
 
   def stop

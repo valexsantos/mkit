@@ -72,10 +72,18 @@ describe Pod do
       pod.start
     end
 
-    it 'tries to start when the container does not exist yet' do
+    it 'recreates the container when it does not exist (removed from outside)' do
       containers.stubs(:find).returns(nil)
-      containers.expects(:start).with('web')
+      containers.expects(:start).never
+      MkitJob.expects(:publish).with(topic: :create_pod_saga, data: { pod_name: 'web' })
       pod.start
+    end
+
+    it 'does not recreate a container that exists, running or not' do
+      containers.stubs(:find).returns(info(running: false), info(running: true))
+      containers.stubs(:start)
+      MkitJob.expects(:publish).never
+      2.times { pod.start }
     end
   end
 
