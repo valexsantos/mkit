@@ -4,6 +4,7 @@ require 'spec_helper'
 require 'support/in_memory_db'
 require 'support/logger'
 require 'mkit/app/model/pod'
+require 'mkit/app/model/mkit_job'
 
 ActiveRecord::Schema.define do
   create_table :pods, force: true do |t|
@@ -83,27 +84,42 @@ describe Pod do
     end
   end
 
-  describe '#update_ip' do
+  describe '#sync_ip' do
     before do
-      pod.stubs(:service).returns(OpenStruct.new(pods_network: 'mkit'))
-      pod.stubs(:sleep)
+      pod.stubs(:service).returns(OpenStruct.new(pods_network: 'mkit', id: 7))
+      pod.stubs(:update_dns)
     end
 
-    it 'keeps the ip when the container reports the same one' do
-      containers.stubs(:find).returns(info(running: true, addresses: { 'mkit' => '10.0.0.5' }))
-      assert_equal '10.0.0.5', pod.update_ip
+    it 'keeps the ip and publishes nothing when it did not change' do
+      MkitJob.expects(:publish).never
+      pod.expects(:update_dns).never
+      assert_equal '10.0.0.5', pod.sync_ip(info(running: true, addresses: { 'mkit' => '10.0.0.5' }))
     end
 
-    it 'retries until the network assigns an ip' do
-      containers.stubs(:find).returns(info(running: true, addresses: { 'mkit' => '' }),
-                                      info(running: true, addresses: { 'mkit' => '10.0.0.5' }))
-      assert_equal '10.0.0.5', pod.update_ip
+    it 'updates the ip, the dns and publishes pod_ip_updated when it changed' do
+      pod.expects(:update_dns)
+      MkitJob.expects(:publish).with(topic: :pod_ip_updated, service_id: 7, pod_id: pod.id)
+      assert_equal '10.0.0.9', pod.sync_ip(info(running: true, addresses: { 'mkit' => '10.0.0.9' }))
+      assert_equal '10.0.0.9', pod.ip
     end
 
-    it 'gives up after the retries when the container has no ip' do
+    it 'sets the first ip of a new pod' do
       pod.ip = nil
-      containers.expects(:find).times(described_class::IP_TRIES).returns(nil)
-      assert_nil pod.update_ip
+      MkitJob.expects(:publish)
+      assert_equal '10.0.0.5', pod.sync_ip(info(running: true, addresses: { 'mkit' => '10.0.0.5' }))
+    end
+
+    it 'leaves the ip untouched when the container has none yet' do
+      MkitJob.expects(:publish).never
+      assert_equal '10.0.0.5', pod.sync_ip(info(running: false, addresses: { 'mkit' => '' }))
+      assert_equal '10.0.0.5', pod.sync_ip(info(running: false, addresses: { 'other' => '1.1.1.1' }))
+      assert_equal '10.0.0.5', pod.sync_ip(nil)
+      assert_equal '10.0.0.5', pod.ip
+    end
+
+    it 'does not wait for the ip' do
+      pod.expects(:sleep).never
+      pod.sync_ip(info(running: false))
     end
   end
 end

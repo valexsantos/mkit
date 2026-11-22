@@ -33,8 +33,11 @@ describe MKIt::ContainerListener do
       handle(event(:container, :create))
     end
 
-    it 'records the container id on start' do
+    it 'records the container id and syncs the ip on start' do
+      info = MKIt::Container::Info.new(id: 'abc', name: 'web', running: true, addresses: { 'mkit' => '10.0.0.5' })
+      containers.expects(:find).with('abc').returns(info)
       pod.expects(:pod_id=).with('abc')
+      pod.expects(:sync_ip).with(info)
       pod.expects(:save)
       service.expects(:update_status!)
       handle(event(:container, :start))
@@ -62,10 +65,10 @@ describe MKIt::ContainerListener do
   describe 'network events' do
     let(:info) { MKIt::Container::Info.new(id: 'abc', name: 'web') }
 
-    it 'updates the pod ip when the container connects' do
+    it 'syncs the pod ip when the container connects' do
       containers.expects(:find).with('abc').returns(info)
       Pod.stubs(:find_by).with(name: 'web').returns(pod)
-      pod.expects(:update_ip)
+      pod.expects(:sync_ip).with(info)
       pod.expects(:save)
       handle(event(:network, :connect, name: nil))
     end
@@ -73,7 +76,7 @@ describe MKIt::ContainerListener do
     it 'does nothing on disconnect' do
       containers.stubs(:find).returns(info)
       Pod.stubs(:find_by).returns(pod)
-      pod.expects(:update_ip).never
+      pod.expects(:sync_ip).never
       handle(event(:network, :disconnect, name: nil))
     end
 
@@ -86,7 +89,7 @@ describe MKIt::ContainerListener do
     it 'ignores containers that are not pods' do
       containers.stubs(:find).returns(info)
       Pod.stubs(:find_by).returns(nil)
-      pod.expects(:update_ip).never
+      pod.expects(:sync_ip).never
       handle(event(:network, :connect, name: nil))
     end
   end

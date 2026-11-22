@@ -9,22 +9,17 @@ class Pod < ActiveRecord::Base
 
   before_destroy :clean_up
 
-  IP_TRIES = 5
+  # Updates the pod ip (and its dns) from the container info, publishing pod_ip_updated when it changes.
+  # Does not wait: an info without ip in the service network (e.g. container not started yet)
+  # leaves the current ip untouched, the next container event brings it.
+  def sync_ip(info)
+    new_ip = info&.ip_on(self.service.pods_network)
+    return self.ip if new_ip.nil? || new_ip == self.ip
 
-  def update_ip
-    new_ip = nil
-    tries = IP_TRIES
-    while new_ip.nil? && tries > 0
-      new_ip = container&.ip_on(self.service.pods_network)
-      sleep(1) if new_ip.nil?
-      tries -= 1
-    end
-    if self.ip != new_ip
-      self.ip = new_ip
-      self.update_dns
-      MkitJob.publish(topic: :pod_ip_updated, service_id: self.service.id, pod_id: self.id)
-    end
-    MKItLogger.info("docker ip updated [#{self.ip}]")
+    self.ip = new_ip
+    self.update_dns
+    MkitJob.publish(topic: :pod_ip_updated, service_id: self.service.id, pod_id: self.id)
+    MKItLogger.info("pod #{self.name} ip updated [#{self.ip}]")
     self.ip
   end
 

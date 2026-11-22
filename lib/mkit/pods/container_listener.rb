@@ -60,8 +60,10 @@ module MKIt
       pod.service.update_status!
     end
 
+    # the container runs: its network is up and the ip is known
     def pod_started(pod, container_id)
       pod.pod_id = container_id
+      pod.sync_ip(@api.containers.find(container_id))
       pod.save
       pod.service.update_status!
     end
@@ -74,14 +76,15 @@ module MKIt
       return unknown_pod(event, info.name) if pod.nil?
 
       case event.action
-      when :connect then pod_connected(pod, event)
+      when :connect then pod_connected(pod, event, info)
       else MKItLogger.debug("\t#{event.kind} #{event.action} <<NOOP / TODO>>")
       end
     end
 
-    def pod_connected(pod, event)
+    # connecting before the container starts yields no ip yet, the start event handles it
+    def pod_connected(pod, event, info)
       MKItLogger.info("network #{event.action} received for pod #{pod.name}")
-      pod.update_ip
+      pod.sync_ip(info)
       pod.save
     end
 
