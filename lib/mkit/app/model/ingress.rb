@@ -80,7 +80,7 @@ class Ingress < ActiveRecord::Base
 
     # when frontend port is range - e.g. 1200-1220, referred backend port must be empty
     yaml["frontend"].each do |front|
-      if front["bind"]["port"] =~ /^\d+-\d+$/
+      if front["bind"]["port"].to_s =~ /^\d+-\d+$/
         referred_backend = yaml["backend"].find { |back| back["name"] == front["default_backend"] }
         raise_bad_configuration "Frontend port range '#{front["bind"]["port"]}' must have an empty backend port" unless referred_backend && (referred_backend["bind"]["port"].nil?)
       end
