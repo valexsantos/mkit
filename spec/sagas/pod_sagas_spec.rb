@@ -3,6 +3,7 @@
 require 'spec_helper'
 require 'mkit/sagas/asaga'
 require 'mkit/container/registry'
+require 'mkit/container/spec'
 
 # minimal collaborators, the real ones need the whole application
 module MKIt
@@ -25,8 +26,17 @@ describe 'pod sagas' do
       assert_equal ['create_pod_saga'], described_class.new(containers: containers).topics
     end
 
+    it 'logs why the container could not be started and lets the job fail' do
+      spec = MKIt::Container::Spec.new(name: 'p1', service: OpenStruct.new(image: 'nginx:9'))
+      Pod.stubs(:find_by_name).with('p1').returns(stub(container_spec: spec))
+      containers.stubs(:run).raises(MKIt::Container::Error.new('image not found', status: 404))
+      MKItLogger.expects(:error).with(all_of(includes('pod p1 (nginx:9) could not be started'),
+                                             includes('image not found'), includes('(status 404)')))
+      assert_raises(MKIt::Container::Error) { described_class.new(containers: containers).do_the(job) }
+    end
+
     it 'runs the pod container spec' do
-      spec = OpenStruct.new(to_h: {})
+      spec = MKIt::Container::Spec.new(name: 'p1', service: OpenStruct.new(image: 'nginx'))
       Pod.stubs(:find_by_name).with('p1').returns(stub(container_spec: spec))
       containers.expects(:run).with(spec)
       described_class.new(containers: containers).do_the(job)

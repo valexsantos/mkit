@@ -37,6 +37,22 @@ describe MKIt::Container::Docker::Mapper do
       assert_empty info.addresses
     end
 
+    it 'maps why the container ended' do
+      info = described_class.info(payload.merge(
+        'State' => { 'Running' => false, 'ExitCode' => 137, 'OOMKilled' => true, 'Error' => 'boom' }
+      ))
+      assert_equal 137, info.exit_code
+      assert info.oom_killed?
+      assert_equal 'boom', info.error
+    end
+
+    it 'has no error or oom by default' do
+      info = described_class.info(payload.merge('State' => { 'Running' => true, 'ExitCode' => 0, 'Error' => '' }))
+      assert_equal 0, info.exit_code
+      refute info.oom_killed?
+      assert_nil info.error
+    end
+
     it 'has no ip while the runtime has not assigned one' do
       assert_nil described_class.info(payload).ip_on('bridge')
       assert_nil described_class.info(payload).ip_on('other')
@@ -54,6 +70,13 @@ describe MKIt::Container::Docker::Mapper do
         e = described_class.event(container_event(action))
         assert_equal [:container, action.to_sym, 'abc', 'web'], [e.kind, e.action, e.container_id, e.container_name]
       end
+    end
+
+    it 'maps the exit code of a die event' do
+      payload = container_event('die')
+      payload['Actor']['Attributes']['exitCode'] = '137'
+      assert_equal 137, described_class.event(payload).exit_code
+      assert_nil described_class.event(container_event('start')).exit_code
     end
 
     it 'maps a network event to the container in its attributes' do

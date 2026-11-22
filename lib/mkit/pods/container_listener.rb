@@ -8,7 +8,11 @@ module MKIt
   class ContainerListener
     RECONNECT_DELAY = 2
     # container actions that only require the service status to be recomputed
-    STATUS_ACTIONS = %i[kill die stop].freeze
+    STATUS_ACTIONS = %i[kill stop].freeze
+    # lines of the container output reported when it fails
+    FAILURE_LOG_LINES = 20
+    # exit codes of a process ended by SIGKILL / SIGTERM (e.g. stop, kill, oom)
+    SIGNAL_EXIT_CODES = [137, 143].freeze
 
     def initialize(api: Container::Registry.api)
       @api = api
@@ -48,6 +52,8 @@ module MKIt
       case event.action
       when :create then pod_created(pod, event.container_id)
       when :start then pod_started(pod, event.container_id)
+      when :die then pod_died(pod, event)
+      when :oom then MKItLogger.error("pod #{pod.name} ran out of memory (see its memory limit in resources)")
       when *STATUS_ACTIONS then pod.service.update_status!
       else MKItLogger.debug("\t#{event.kind} #{event.action} <<TODO>>")
       end
@@ -66,6 +72,38 @@ module MKIt
       pod.sync_ip(@api.containers.find(container_id))
       pod.save
       pod.service.update_status!
+    end
+
+    def pod_died(pod, event)
+      report_exit(pod, event)
+      pod.service.update_status!
+    end
+
+    # Explains why a container ended: exit code, oom, runtime error and its last output.
+    def report_exit(pod, event)
+      info = @api.containers.find(event.container_id)
+      code = event.exit_code || info&.exit_code
+      return MKItLogger.info("pod #{pod.name} exited with code 0") if code.to_i.zero? && !info&.oom_killed?
+
+      message = exit_message(pod, code, info)
+      SIGNAL_EXIT_CODES.include?(code) && !info&.oom_killed? ? MKItLogger.warn(message) : MKItLogger.error(message)
+    end
+
+    def exit_message(pod, code, info)
+      lines = ["pod #{pod.name} died with exit code #{code}"]
+      lines << 'killed by the runtime: out of memory' if info&.oom_killed?
+      lines << "runtime error: #{info.error}" if info&.error
+      output = last_output(pod.name)
+      lines << "last output:\n#{output}" unless output.empty?
+      lines.join("\n\t")
+    end
+
+    def last_output(name)
+      text = @api.containers.logs(name, tail: FAILURE_LOG_LINES).to_s.strip
+      text.lines.map { |line| "\t\t#{line.chomp}" }.join("\n")
+    rescue Container::Error => e
+      MKItLogger.debug("could not read the output of #{name}: #{e.message}")
+      ''
     end
 
     def on_network_event(event)

@@ -43,11 +43,80 @@ describe MKIt::ContainerListener do
       handle(event(:container, :start))
     end
 
-    %i[kill die stop].each do |action|
+    %i[kill stop].each do |action|
       it "recomputes the service status on #{action}" do
         service.expects(:update_status!)
         handle(event(:container, action))
       end
+    end
+
+    describe 'die' do
+      def die(code: 1)
+        MKIt::Container::Event.new(kind: :container, action: :die, container_id: 'abc', container_name: 'web', exit_code: code)
+      end
+
+      def info(**attrs)
+        MKIt::Container::Info.new(id: 'abc', name: 'web', **attrs)
+      end
+
+      before { service.stubs(:update_status!) }
+
+      it 'recomputes the service status' do
+        containers.stubs(:find).returns(nil)
+        containers.stubs(:logs).returns('')
+        service.expects(:update_status!)
+        handle(die)
+      end
+
+      it 'logs the exit code with the last output of the container' do
+        containers.stubs(:find).returns(info(exit_code: 1))
+        containers.expects(:logs).with('web', tail: 20).returns("starting\nFATAL: bad config\n")
+        MKItLogger.expects(:error).with(all_of(includes('pod web died with exit code 1'),
+                                               includes('last output:'), includes('FATAL: bad config')))
+        handle(die)
+      end
+
+      it 'logs the runtime error and the oom kill' do
+        containers.stubs(:find).returns(info(exit_code: 137, oom_killed: true, error: 'cannot start'))
+        containers.stubs(:logs).returns('')
+        MKItLogger.expects(:error).with(all_of(includes('exit code 137'), includes('out of memory'),
+                                               includes('runtime error: cannot start')))
+        handle(die(code: 137))
+      end
+
+      it 'is a warning when ended by a signal (stop, kill)' do
+        containers.stubs(:find).returns(info(exit_code: 143))
+        containers.stubs(:logs).returns('')
+        MKItLogger.expects(:warn).with(includes('exit code 143'))
+        MKItLogger.expects(:error).never
+        handle(die(code: 143))
+      end
+
+      it 'only informs on a clean exit' do
+        containers.stubs(:find).returns(info(exit_code: 0))
+        MKItLogger.expects(:error).never
+        containers.expects(:logs).never
+        handle(die(code: 0))
+      end
+
+      it 'uses the inspected exit code when the event has none' do
+        containers.stubs(:find).returns(info(exit_code: 2))
+        containers.stubs(:logs).returns('')
+        MKItLogger.expects(:error).with(includes('exit code 2'))
+        handle(die(code: nil))
+      end
+
+      it 'still reports when the container is gone or its output cannot be read' do
+        containers.stubs(:find).returns(nil)
+        containers.stubs(:logs).raises(MKIt::Container::Error, 'gone')
+        MKItLogger.expects(:error).with(includes('pod web died with exit code 1'))
+        handle(die)
+      end
+    end
+
+    it 'logs an out of memory event' do
+      MKItLogger.expects(:error).with(includes('pod web ran out of memory'))
+      handle(event(:container, :oom))
     end
 
     it 'ignores other actions' do

@@ -20,10 +20,24 @@ describe MKIt::Container::Info do
   end
 end
 
+describe MKIt::Container::Info, 'failure details' do
+  it 'exposes exit code, oom and runtime error' do
+    info = described_class.new(id: 'a', name: 'n', exit_code: 1, oom_killed: true, error: 'no such file')
+    assert_equal 1, info.exit_code
+    assert info.oom_killed?
+    assert_equal 'no such file', info.error
+  end
+
+  it 'treats an empty error as none' do
+    assert_nil described_class.new(id: 'a', name: 'n', error: '').error
+  end
+end
+
 describe MKIt::Container::Event do
   it 'describes itself' do
     e = described_class.new(kind: :container, action: :start, container_id: 'abc', container_name: 'web')
     assert_equal '<container> <start> container=abc name=web', e.to_s
     assert_equal '<network> <connect> container=- name=-', described_class.new(kind: :network, action: :connect).to_s
+    assert_match(/exit_code=2\z/, described_class.new(kind: :container, action: :die, exit_code: 2).to_s)
   end
 end

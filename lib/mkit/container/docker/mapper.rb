@@ -17,7 +17,10 @@ module MKIt
             name: inspect['Name'].to_s.delete_prefix('/'),
             running: inspect.dig('State', 'Running') == true,
             tty: inspect.dig('Config', 'Tty') == true,
-            addresses: addresses(inspect)
+            addresses: addresses(inspect),
+            exit_code: inspect.dig('State', 'ExitCode'),
+            oom_killed: inspect.dig('State', 'OOMKilled') == true,
+            error: inspect.dig('State', 'Error')
           )
         end
 
@@ -29,7 +32,8 @@ module MKIt
             kind: kind,
             action: payload['Action'].to_s.split(':').first.to_s.strip.to_sym,
             container_id: container_id(kind, payload, attributes),
-            container_name: kind == :container ? attributes['name'] : nil
+            container_name: kind == :container ? attributes['name'] : nil,
+            exit_code: attributes['exitCode']&.to_i
           )
         end
 
