@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class Resource < ActiveRecord::Base
+  LIMITS = %w[cpu memory memory_swap].freeze
+  LIMIT_FORMAT = /\A\d+m\z/.freeze
+
   belongs_to :service
 
   def self.create(yaml)
@@ -37,10 +40,10 @@ class Resource < ActiveRecord::Base
     end
     # validate limits
     unless yaml.nil? || yaml["limits"].nil?
-      resources = yaml["limits"]
-      raise_bad_configuration "resource cpu limits must match '\\d+m'" if resources["cpu"] && resources["cpu"] !~ /\d+m$/
-      raise_bad_configuration "resource memory limits must match '\\d+m'" if resources["memory"] && resources["memory"] !~ /\d+m$/
-      raise_bad_configuration "resource memory_swap limits must match '\\d+m'" if resources["memory_swap"] && resources["memory_swap"] !~ /\d+m$/
+      LIMITS.each do |name|
+        value = yaml["limits"][name]
+        raise_bad_configuration "resource #{name} limits must match '\\d+m'" if value && value.to_s !~ LIMIT_FORMAT
+      end
     end
     true
   end
