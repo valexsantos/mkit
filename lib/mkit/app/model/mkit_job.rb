@@ -1,6 +1,5 @@
 
 require 'mkit/app/helpers/erb_helper'
-require 'mkit/app/helpers/docker_helper'
 require 'mkit/app/model/service'
 require 'mkit/status'
 

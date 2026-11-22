@@ -1,8 +1,11 @@
-require 'mkit/app/helpers/docker_helper'
+require 'mkit/container/registry'
 
 module MKIt
   class DestroyPodSaga < ASaga
-    include MKIt::DockerHelper
+    def initialize(containers: Container::Registry.api.containers)
+      @containers = containers
+      super()
+    end
 
     def topics
       %w{destroy_pod_saga}
@@ -22,7 +25,7 @@ module MKIt
       MKItLogger.info("#{self.class} <#{job.topic}> #{job.inspect}....")
 
       begin
-        remove_instance(job.data['pod_name'])
+        @containers.remove(job.data['pod_name'])
       rescue => e
         MKItLogger.warn(e)
       end

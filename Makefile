@@ -20,9 +20,9 @@ install:
 	bundle exec rake install
 
 test:
-	@for f in spec/*_spec.rb; do \
+	@for f in $$(find spec -name '*_spec.rb' | sort); do \
 		echo "== $$f"; \
-		RACK_ENV=test bundle exec ruby -Ispec $$f || exit 1; \
+		RACK_ENV=test ruby -Ilib -Ispec $$f || exit 1; \
 	done
 
 lint:

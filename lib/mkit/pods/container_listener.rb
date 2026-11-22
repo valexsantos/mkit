@@ -1,18 +1,16 @@
 require 'mkit/status'
-require 'mkit/docker_client'
+require 'mkit/container/registry'
 
 #
 # https://docs.docker.com/engine/api/v1.43/#tag/System/operation/SystemEvents
-require 'mkit/app/helpers/docker_helper'
 module MKIt
   class StopThread < RuntimeError; end
 
-  class DockerListener
-    include MKIt::DockerHelper
-
+  class ContainerListener
     RECONNECT_DELAY = 2
 
-    def initialize
+    def initialize(api: Container::Registry.api)
+      @api = api
       @queue = Queue.new
     end
 
@@ -67,7 +65,7 @@ module MKIt
         end
       when :network
         pod_id = msg.Actor.Attributes.container
-        inspect = inspect_instance(pod_id)
+        inspect = @api.containers.find(pod_id)
         unless inspect.nil?
           inspect = inspect.to_o
           pod_name = inspect.Name[1..]
@@ -121,7 +119,7 @@ module MKIt
     def listen
       loop do
         begin
-          MKIt::DockerClient.default.stream('/events') { |event| enqueue event.to_o }
+          @api.events.each { |event| enqueue event.to_o }
           MKItLogger.warn('docker event stream closed, reconnecting')
         rescue StandardError => e
           MKItLogger.warn("docker event stream error: #{e.message}, reconnecting")

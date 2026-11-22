@@ -1,8 +1,11 @@
-require 'mkit/app/helpers/docker_helper'
+require 'mkit/container/registry'
 
 module MKIt
   class CreatePodSaga < ASaga
-    include MKIt::DockerHelper
+    def initialize(containers: Container::Registry.api.containers)
+      @containers = containers
+      super()
+    end
 
     def topics
       %w{create_pod_saga}
@@ -24,7 +27,7 @@ module MKIt
       pod = Pod.find_by_name(pod_name)
       spec = pod.container_spec
       MKItLogger.info("deploying docker pod, spec [#{spec.to_h}]")
-      create_instance(spec)
+      @containers.run(spec)
     end
   end
 end

@@ -4,8 +4,8 @@ require 'mkit/app/model/service'
 require 'mkit/app/helpers/services_helper'
 require 'mkit/app/helpers/params_helper'
 require 'mkit/app/helpers/migrations_helper'
-require 'mkit/pods/docker_log_listener'
-require 'mkit/pods/docker_exec_command'
+require 'mkit/pods/container_log_listener'
+require 'mkit/pods/container_exec_command'
 
 class ServicesController < MKIt::Server
   helpers MKIt::ServicesHelper
@@ -53,7 +53,7 @@ class ServicesController < MKIt::Server
         ws.onopen do
           settings.sockets << ws
           ws.send("<<<< %s | %s >>>>\n" % [srv.name, pod.name])
-          listener = MKIt::DockerLogListener.new(pod, ws, options: options_parameter)
+          listener = MKIt::ContainerLogListener.new(pod, ws, options: options_parameter)
           settings.listeners << listener
           listener.register
         end
@@ -147,7 +147,7 @@ class ServicesController < MKIt::Server
         listener = nil
         ws.onopen do
           settings.sockets << ws
-          listener = MKIt::DockerExecCommand.new(pod, ws, options: options_parameter)
+          listener = MKIt::ContainerExecCommand.new(pod, ws, options: options_parameter)
           settings.listeners << listener
           listener.register
         end

@@ -1,15 +1,12 @@
-require 'mkit/docker_client'
-require 'mkit/docker_stream_demux'
-require 'mkit/app/helpers/docker_helper'
+require 'mkit/container/registry'
 
 module MKIt
-  # Streams a pod's logs to a websocket through the Docker socket.
-  class DockerLogListener
-    include DockerHelper
-
+  # Streams a pod's logs to a websocket through the container runtime.
+  class ContainerLogListener
     DEFAULT_LINES = 10
 
-    def initialize(pod, ws, options: {})
+    def initialize(pod, ws, options: {}, containers: Container::Registry.api.containers)
+      @containers = containers
       clear_logs(pod.name) if options[:clear]
       @pod = pod
       @ws = ws
@@ -39,23 +36,24 @@ module MKIt
     private
 
     def query
-      log_query(
+      {
         tail: @options[:nr_lines] || DEFAULT_LINES,
         follow: @options[:follow] == 'true',
         timestamps: @options[:timestamps] == 'true',
         details: @options[:details] == 'true',
         since: @options[:since],
         until_: @options[:until]
-      )
+      }
+    end
+
+    def clear_logs(name)
+      path = @containers.log_path(name)
+      File.write(path, '') unless path.nil? || path.empty?
     end
 
     def stream_logs
-      demux = tty?(@pod.name) ? nil : MKIt::DockerStreamDemux.new
       pending = +''
-      docker.stream_chunks("/containers/#{@pod.name}/logs", query) do |chunk|
-        emit = ->(text) { pending = send_lines(pending + text) }
-        demux ? demux.feed(chunk, &emit) : emit.call(chunk)
-      end
+      @containers.follow_logs(@pod.name, **query) { |text| pending = send_lines(pending + text) }
       @ws.send(pending) unless pending.empty?
     end
 

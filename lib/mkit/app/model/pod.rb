@@ -1,4 +1,5 @@
-require 'mkit/app/helpers/docker_helper'
+require 'mkit/container/registry'
+require 'mkit/container/spec'
 require 'mkit/app/model/service'
 require 'mkit/status'
 
@@ -8,7 +9,6 @@ class Pod < ActiveRecord::Base
 
   before_destroy :clean_up
 
-  include MKIt::DockerHelper
 
   def update_ip
     new_ip = nil
@@ -52,21 +52,25 @@ class Pod < ActiveRecord::Base
   end
 
   def container_spec
-    MKIt::DockerContainerSpec.new(name: self.name, service: self.service)
+    MKIt::Container::Spec.new(name: self.name, service: self.service)
   end
 
   def start
-    start_instance(self.name) unless instance.State.Running
+    containers.start(self.name) unless instance.State.Running
   end
 
   def stop
-    stop_instance(self.name) unless self.instance.nil? || !self.instance.State.Running
+    containers.stop(self.name) unless self.instance.nil? || !self.instance.State.Running
   end
 
   def instance
-    properties = inspect_instance(self.name)
+    properties = containers.find(self.name)
     return properties.to_o unless properties.nil?
     nil
+  end
+
+  def containers
+    MKIt::Container::Registry.api.containers
   end
 
   def clean_up

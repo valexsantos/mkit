@@ -5,7 +5,7 @@ require 'mkit/app/model/service_port'
 require 'mkit/app/model/service_config'
 require 'mkit/app/model/pod'
 require 'mkit/app/helpers/erb_helper'
-require 'mkit/app/helpers/docker_helper'
+require 'mkit/container/registry'
 require 'mkit/mkit_interface'
 require 'mkit/status'
 require 'mkit/utils'
@@ -32,7 +32,6 @@ class Service < ActiveRecord::Base
   validates :name, presence: true
 
   include MKIt::ERBHelper
-  include MKIt::DockerHelper
 
   def self.create(yaml)
     config = yaml["service"]
@@ -127,7 +126,8 @@ class Service < ActiveRecord::Base
   end
 
   def create_pods_network
-    create_network(self.pods_network) unless network_exists?(self.pods_network)
+    networks = MKIt::Container::Registry.api.networks
+    networks.create(self.pods_network) unless networks.exists?(self.pods_network)
   end
 
   def deploy_network
@@ -245,7 +245,7 @@ class Service < ActiveRecord::Base
     out = ""
     self.pod.each { |p|
       out << "<<<< %s | %s >>>>\n" % [self.name, p.name]
-      out << logs(p.name)
+      out << MKIt::Container::Registry.api.containers.logs(p.name)
     }
     out
   end

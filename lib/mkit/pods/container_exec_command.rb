@@ -1,14 +1,12 @@
 require 'shellwords'
-require 'mkit/docker_client'
-require 'mkit/app/helpers/docker_helper'
+require 'mkit/container/registry'
 
 module MKIt
-  # Runs a command in a pod through the Docker socket and bridges its
+  # Runs a command in a pod through the container runtime and bridges its
   # (TTY) stream to a websocket.
-  class DockerExecCommand
-    include DockerHelper
-
-    def initialize(pod, ws, options: {})
+  class ContainerExecCommand
+    def initialize(pod, ws, options: {}, containers: Container::Registry.api.containers)
+      @containers = containers
       @pod = pod
       @ws = ws
       @detached = options[:detached] == 'true'
@@ -16,8 +14,7 @@ module MKIt
     end
 
     def register
-      exec = docker.post("/containers/#{@pod.name}/exec", exec_config)
-      @socket = docker.hijack("/exec/#{exec['Id']}/start", 'Detach' => @detached, 'Tty' => !@detached)
+      @socket = @containers.attach_exec(@pod.name, @cmd, detached: @detached)
       @stdout_thread = Thread.new { pump_output }
       @ws.onmessage { |msg| @socket.write(msg) rescue nil } unless @detached
       @stdout_thread
@@ -33,17 +30,6 @@ module MKIt
     end
 
     private
-
-    def exec_config
-      {
-        'Cmd' => @cmd,
-        'AttachStdin' => !@detached,
-        'AttachStdout' => !@detached,
-        'AttachStderr' => !@detached,
-        'Tty' => !@detached,
-        'Detach' => @detached
-      }
-    end
 
     def pump_output
       while (data = @socket.readpartial(4096))
