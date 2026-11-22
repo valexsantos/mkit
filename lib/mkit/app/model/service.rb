@@ -166,7 +166,7 @@ class Service < ActiveRecord::Base
   def update_status!
     combined_status = nil
     self.pod.each { |pod|
-      child_status = pod.set_status_from_docker
+      child_status = pod.set_status_from_container
       if combined_status
         case combined_status
         when MKIt::Status::RUNNING

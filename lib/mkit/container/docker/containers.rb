@@ -4,6 +4,7 @@ require 'shellwords'
 require 'mkit/container/containers'
 require 'mkit/container/errors'
 require 'mkit/container/docker/payload'
+require 'mkit/container/docker/mapper'
 require 'mkit/container/docker/stream_demux'
 
 module MKIt
@@ -36,7 +37,8 @@ module MKIt
         end
 
         def find(id)
-          @client.get("/containers/#{id}/json")
+          inspect = inspect_raw(id)
+          inspect.nil? ? nil : Mapper.info(inspect)
         end
 
         def exec(id, cmd)
@@ -56,11 +58,7 @@ module MKIt
         end
 
         def log_path(id)
-          find(id)&.dig('LogPath')
-        end
-
-        def tty?(id)
-          find(id)&.dig('Config', 'Tty') == true
+          inspect_raw(id)&.dig('LogPath')
         end
 
         def follow_logs(id, **query)
@@ -76,6 +74,14 @@ module MKIt
         end
 
         private
+
+        def inspect_raw(id)
+          @client.get("/containers/#{id}/json")
+        end
+
+        def tty?(id)
+          inspect_raw(id)&.dig('Config', 'Tty') == true
+        end
 
         def create(spec)
           created = post_create(spec)

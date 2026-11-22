@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'mkit/container/events'
+require 'mkit/container/docker/mapper'
 
 module MKIt
   module Container
@@ -13,7 +14,7 @@ module MKIt
         end
 
         def each(&block)
-          @client.stream('/events', &block)
+          @client.stream('/events') { |payload| block.call(Mapper.event(payload)) }
         end
       end
     end

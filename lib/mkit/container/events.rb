@@ -8,7 +8,7 @@ module MKIt
     class Events
       extend Abstract
 
-      # each { |event| }: blocks yielding events (Hash) until the stream closes
+      # each { |event| }: blocks yielding Container::Event until the stream closes
       abstract_methods :each
     end
   end

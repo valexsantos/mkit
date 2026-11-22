@@ -5,7 +5,7 @@ require 'mkit/container/docker/api'
 
 # Every runtime implementation must provide the whole contract.
 CONTRACTS = {
-  MKIt::Container::Containers => %i[run start stop remove find exec logs log_path tty? follow_logs attach_exec],
+  MKIt::Container::Containers => %i[run start stop remove find exec logs log_path follow_logs attach_exec],
   MKIt::Container::Networks => %i[create find attach detach remove exists?],
   MKIt::Container::Volumes => %i[create find remove],
   MKIt::Container::Events => %i[each]

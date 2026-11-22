@@ -58,10 +58,14 @@ describe MKIt::Container::Docker::Containers do
     containers.remove('c')
   end
 
-  it 'finds a container, nil when missing' do
-    client.stubs(:get).with('/containers/c/json').returns('Id' => 'c')
+  it 'finds a container as an Info, nil when missing' do
+    client.stubs(:get).with('/containers/c/json')
+          .returns('Id' => 'c', 'Name' => '/web', 'State' => { 'Running' => true })
     client.stubs(:get).with('/containers/zz/json').returns(nil)
-    assert_equal 'c', containers.find('c')['Id']
+    info = containers.find('c')
+    assert_instance_of MKIt::Container::Info, info
+    assert_equal %w[c web], [info.id, info.name]
+    assert info.running?
     assert_nil containers.find('zz')
   end
 
@@ -148,7 +152,7 @@ describe MKIt::Container::Docker::Containers do
     with_daemon(routes) do |sock, reqs|
       real = MKIt::Container::Docker::Containers.new(MKIt::Container::Http::UnixClient.new(socket: sock))
       real.start('c')
-      assert_equal 'c', real.find('c')['Id']
+      assert_equal 'c', real.find('c').id
       assert_equal [%w[POST /containers/c/start], %w[GET /containers/c/json]], reqs.map { |r| r[0, 2] }
     end
   end

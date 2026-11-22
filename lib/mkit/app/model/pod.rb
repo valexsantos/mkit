@@ -9,14 +9,15 @@ class Pod < ActiveRecord::Base
 
   before_destroy :clean_up
 
+  IP_TRIES = 5
 
   def update_ip
     new_ip = nil
-    tries = 5
-    while (new_ip.nil? && tries > 0) do
-      new_ip = self.instance.NetworkSettings.Networks[self.service.pods_network].IPAddress
+    tries = IP_TRIES
+    while new_ip.nil? && tries > 0
+      new_ip = container&.ip_on(self.service.pods_network)
       sleep(1) if new_ip.nil?
-      tries = tries - 1
+      tries -= 1
     end
     if self.ip != new_ip
       self.ip = new_ip
@@ -37,16 +38,15 @@ class Pod < ActiveRecord::Base
     self.dns_host.save
   end
 
-  def set_status_from_docker
-    if !self.instance.nil?
-      if instance.State.Running
-        self.status = MKIt::Status::RUNNING
-      else
-        self.status = MKIt::Status::STOPPED
-      end
-    else
-      self.status = MKIt::Status::PENDING
-    end
+  def set_status_from_container
+    info = container
+    self.status = if info.nil?
+                    MKIt::Status::PENDING
+                  elsif info.running?
+                    MKIt::Status::RUNNING
+                  else
+                    MKIt::Status::STOPPED
+                  end
     self.save
     self.status
   end
@@ -56,17 +56,16 @@ class Pod < ActiveRecord::Base
   end
 
   def start
-    containers.start(self.name) unless instance.State.Running
+    containers.start(self.name) unless container&.running?
   end
 
   def stop
-    containers.stop(self.name) unless self.instance.nil? || !self.instance.State.Running
+    containers.stop(self.name) if container&.running?
   end
 
-  def instance
-    properties = containers.find(self.name)
-    return properties.to_o unless properties.nil?
-    nil
+  # MKIt::Container::Info of the pod's container, nil when it does not exist
+  def container
+    containers.find(self.name)
   end
 
   def containers
