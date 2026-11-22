@@ -53,6 +53,7 @@ module MKIt
       when :create then pod_created(pod, event.container_id)
       when :start then pod_started(pod, event.container_id)
       when :die then pod_died(pod, event)
+      when :destroy then pod_gone(pod)
       when :oom then MKItLogger.error("pod #{pod.name} ran out of memory (see its memory limit in resources)")
       when *STATUS_ACTIONS then pod.service.update_status!
       else MKItLogger.debug("\t#{event.kind} #{event.action} <<TODO>>")
@@ -70,6 +71,13 @@ module MKIt
     def pod_started(pod, container_id)
       pod.pod_id = container_id
       pod.sync_ip(@api.containers.find(container_id))
+      pod.save
+      pod.service.update_status!
+    end
+
+    # the container was removed: the pod no longer has an address nor takes part in the proxy config
+    def pod_gone(pod)
+      pod.sync_ip(nil)
       pod.save
       pod.service.update_status!
     end

@@ -5,6 +5,7 @@ require 'support/in_memory_db'
 require 'support/logger'
 require 'mkit/app/model/pod'
 require 'mkit/app/model/mkit_job'
+require 'mkit/app/model/dns_host'
 
 ActiveRecord::Schema.define do
   create_table :pods, force: true do |t|
@@ -13,6 +14,15 @@ ActiveRecord::Schema.define do
     t.string :ip
     t.string :status
     t.integer :service_id
+  end
+end
+
+ActiveRecord::Schema.define do
+  create_table :dns_hosts, force: true do |t|
+    t.integer :service_id
+    t.integer :pod_id
+    t.string :name
+    t.string :ip
   end
 end
 
@@ -85,8 +95,10 @@ describe Pod do
   end
 
   describe '#sync_ip' do
+    let(:pod) { described_class.create!(name: 'web', ip: '10.0.0.5') }
+
     before do
-      pod.stubs(:service).returns(OpenStruct.new(pods_network: 'mkit', id: 7))
+      pod.stubs(:service).returns(OpenStruct.new(pods_network: 'mkit', id: 7, name: 'svc'))
       pod.stubs(:update_dns)
     end
 
@@ -96,25 +108,48 @@ describe Pod do
       assert_equal '10.0.0.5', pod.sync_ip(info(running: true, addresses: { 'mkit' => '10.0.0.5' }))
     end
 
-    it 'updates the ip, the dns and publishes pod_ip_updated when it changed' do
-      pod.expects(:update_dns)
-      MkitJob.expects(:publish).with(topic: :pod_ip_updated, service_id: 7, pod_id: pod.id)
+    it 'saves the new ip and its dns, then publishes pod_ip_updated' do
+      sequence = sequence('ip update')
+      pod.expects(:update_dns).in_sequence(sequence)
+      MkitJob.expects(:publish).with(topic: :pod_ip_updated, service_id: 7, pod_id: pod.id).in_sequence(sequence)
       assert_equal '10.0.0.9', pod.sync_ip(info(running: true, addresses: { 'mkit' => '10.0.0.9' }))
-      assert_equal '10.0.0.9', pod.ip
+      assert_equal '10.0.0.9', described_class.find(pod.id).ip # already persisted when the job is published
     end
 
     it 'sets the first ip of a new pod' do
-      pod.ip = nil
+      pod.update!(ip: nil)
       MkitJob.expects(:publish)
       assert_equal '10.0.0.5', pod.sync_ip(info(running: true, addresses: { 'mkit' => '10.0.0.5' }))
     end
 
-    it 'leaves the ip untouched when the container has none yet' do
+    it 'keeps the last ip while the container exists without one (stopped or not started)' do
       MkitJob.expects(:publish).never
       assert_equal '10.0.0.5', pod.sync_ip(info(running: false, addresses: { 'mkit' => '' }))
       assert_equal '10.0.0.5', pod.sync_ip(info(running: false, addresses: { 'other' => '1.1.1.1' }))
-      assert_equal '10.0.0.5', pod.sync_ip(nil)
       assert_equal '10.0.0.5', pod.ip
+    end
+
+    describe 'when the container no longer exists' do
+      it 'clears the ip, drops the dns record and publishes pod_ip_updated' do
+        DnsHost.create!(pod_id: pod.id, name: 'svc.internal', ip: '10.0.0.5')
+        MkitJob.expects(:publish).with(topic: :pod_ip_updated, service_id: 7, pod_id: pod.id)
+        assert_nil pod.sync_ip(nil)
+        assert_nil described_class.find(pod.id).ip
+        assert_equal 0, DnsHost.where(pod_id: pod.id).count
+      end
+
+      it 'publishes nothing when the pod had no ip already' do
+        pod.update!(ip: nil)
+        MkitJob.expects(:publish).never
+        assert_nil pod.sync_ip(nil)
+      end
+    end
+
+    it 'does not publish when notify is false, the caller does it' do
+      MkitJob.expects(:publish).never
+      pod.sync_ip(info(running: true, addresses: { 'mkit' => '10.0.0.9' }), notify: false)
+      assert pod.saved_change_to_ip?
+      assert_equal '10.0.0.9', described_class.find(pod.id).ip
     end
 
     it 'does not wait for the ip' do

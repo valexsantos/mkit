@@ -9,18 +9,30 @@ class Pod < ActiveRecord::Base
 
   before_destroy :clean_up
 
-  # Updates the pod ip (and its dns) from the container info, publishing pod_ip_updated when it changes.
-  # Does not wait: an info without ip in the service network (e.g. container not started yet)
-  # leaves the current ip untouched, the next container event brings it.
-  def sync_ip(info)
+  # Updates the pod ip (and its dns) from the container info, publishing pod_ip_updated (which
+  # refreshes the proxy config) when it changes. Does not wait.
+  #  - container gone (info nil): the ip is cleared, the pod leaves the proxy config
+  #  - container exists without ip in the service network (not started, stopped): the last ip is kept,
+  #    a stopped pod still counts; the next container event brings the new one
+  # The pod is saved before the job is published: the worker reads the ip from the database.
+  # notify: false leaves the job to the caller (it must publish it, e.g. once per service)
+  def sync_ip(info, notify: true)
+    return self.ip if info && info.ip_on(self.service.pods_network).nil?
+
     new_ip = info&.ip_on(self.service.pods_network)
-    return self.ip if new_ip.nil? || new_ip == self.ip
+    return self.ip if new_ip == self.ip
 
     self.ip = new_ip
-    self.update_dns
-    MkitJob.publish(topic: :pod_ip_updated, service_id: self.service.id, pod_id: self.id)
-    MKItLogger.info("pod #{self.name} ip updated [#{self.ip}]")
+    self.save
+    new_ip.nil? ? self.clear_dns : self.update_dns
+    MkitJob.publish(topic: :pod_ip_updated, service_id: self.service.id, pod_id: self.id) if notify
+    MKItLogger.info("pod #{self.name} ip updated [#{self.ip.inspect}]")
     self.ip
+  end
+
+  # the dns server cannot answer with an empty address
+  def clear_dns
+    self.dns_host = nil
   end
 
   def update_dns

@@ -22,7 +22,7 @@ backend <%=name%>-<%=be.name%>-back
   mode <%=be.mode%>
   balance <%=be.load_balance%>
   <%=be.options.join("\n  ")%>
-<%pod.each { | pod | %>
+<%proxy_pods.each { | pod | %>
   server <%=pod.name%>  <%=pod.ip%><%unless be.port.nil? || be.port.empty? then%><%=":#{be.port}"%> <%=be.bind_options.join(' ')%> <%end%>
 <%}%>
 <%}%>

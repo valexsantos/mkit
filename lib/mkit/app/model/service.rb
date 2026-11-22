@@ -202,11 +202,25 @@ class Service < ActiveRecord::Base
     MkitJob.publish(topic: :update_proxy_config, application_id: self.id, data: proxy_config)
   end
 
+  # pods that can receive traffic: the ones with a known ip (a stopped pod keeps its last ip)
+  def proxy_pods
+    self.pod.reject { |p| p.ip.to_s.empty? }
+  end
+
+  # a proxy config only makes sense when there is a pod to route to
+  def routable?
+    proxy_pods.any?
+  end
+
+  def proxy_filename
+    my_addr = self.lease.ip.split('.')[3]
+    "#{'%04i' % my_addr.to_i}_#{self.name}.cfg"
+  end
+
   def proxy_config
     # config
     haproxy = parse
-    my_addr = self.lease.ip.split('.')[3]
-    filename = "#{'%04i' % my_addr.to_i}_#{self.name}.cfg"
+    filename = proxy_filename
     MKItLogger.debug("haproxy config file: #{filename}")
     {filename: filename, data: haproxy}
   end
@@ -216,9 +230,7 @@ class Service < ActiveRecord::Base
   end
 
   def clean_up
-    my_addr = self.lease.ip.split('.')[3]
-    filename = "#{'%04i' % my_addr.to_i}_#{self.name}.cfg"
-    MkitJob.publish(topic: :destroy_proxy_config, data: {filename: filename})
+    MkitJob.publish(topic: :destroy_proxy_config, data: {filename: proxy_filename})
   end
 
   def find_pod_by_id_or_name(pod_id)

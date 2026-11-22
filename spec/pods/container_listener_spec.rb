@@ -119,6 +119,13 @@ describe MKIt::ContainerListener do
       handle(event(:container, :oom))
     end
 
+    it 'removes the pod from the proxy config when its container is destroyed' do
+      pod.expects(:sync_ip).with(nil)
+      pod.expects(:save)
+      service.expects(:update_status!)
+      handle(event(:container, :destroy))
+    end
+
     it 'ignores other actions' do
       service.expects(:update_status!).never
       handle(event(:container, :rename))
