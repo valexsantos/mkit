@@ -1,5 +1,6 @@
 require 'shellwords'
 require 'mkit/container/registry'
+require 'mkit/container/utf8_buffer'
 
 module MKIt
   # Runs a command in a pod through the container runtime and bridges its
@@ -32,11 +33,15 @@ module MKIt
     private
 
     def pump_output
+      text = Container::Utf8Buffer.new
       while (data = @socket.readpartial(4096))
-        @ws.send(data.force_encoding(Encoding::UTF_8))
+        out = text.feed(data)
+        @ws.send(out) unless out.empty?
       end
     rescue EOFError, IOError, Errno::ECONNRESET
-      # exec finished
+      # exec finished: send what was held back
+      rest = text.flush
+      @ws.send(rest) unless rest.empty?
     ensure
       @socket.close unless @socket.closed?
       close

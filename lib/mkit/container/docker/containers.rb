@@ -7,6 +7,7 @@ require 'mkit/container/errors'
 require 'mkit/container/docker/payload'
 require 'mkit/container/docker/mapper'
 require 'mkit/container/docker/stream_demux'
+require 'mkit/container/utf8_buffer'
 
 module MKIt
   module Container
@@ -57,7 +58,7 @@ module MKIt
           body = @client.get_raw("/containers/#{id}/logs", log_query(tail: tail))
           return '' if body.nil?
 
-          tty?(id) ? body : StreamDemux.decode(body)
+          tty?(id) ? Container::Utf8Buffer.decode(body) : StreamDemux.decode(body)
         end
 
         def log_path(id)
@@ -65,10 +66,11 @@ module MKIt
         end
 
         def follow_logs(id, **query)
-          demux = tty?(id) ? nil : StreamDemux.new
+          decoder = tty?(id) ? Container::Utf8Buffer.new : StreamDemux.new
           @client.stream_chunks("/containers/#{id}/logs", log_query(**query)) do |chunk|
-            demux ? demux.feed(chunk) { |text| yield text } : yield(chunk)
+            feed_logs(decoder, chunk) { |text| yield text }
           end
+          flush_logs(decoder) { |text| yield text }
         end
 
         def attach_exec(id, cmd, detached: false)
@@ -77,6 +79,25 @@ module MKIt
         end
 
         private
+
+        # tty streams are raw bytes, the others are multiplexed frames
+        def feed_logs(decoder, chunk)
+          if decoder.is_a?(StreamDemux)
+            decoder.feed(chunk) { |text| yield text }
+          else
+            text = decoder.feed(chunk)
+            yield text unless text.empty?
+          end
+        end
+
+        def flush_logs(decoder)
+          if decoder.is_a?(StreamDemux)
+            decoder.flush { |text| yield text }
+          else
+            text = decoder.flush
+            yield text unless text.empty?
+          end
+        end
 
         def inspect_raw(id)
           @client.get("/containers/#{id}/json")

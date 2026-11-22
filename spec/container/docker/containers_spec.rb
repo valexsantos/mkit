@@ -141,6 +141,15 @@ describe MKIt::Container::Docker::Containers do
       assert_equal %w[a b], got
     end
 
+    it 'follows tty logs keeping the characters split between chunks whole' do
+      client.stubs(:get).with('/containers/c/json').returns('Config' => { 'Tty' => true })
+      bytes = 'ção'.b
+      client.stubs(:stream_chunks).multiple_yields([bytes[0, 2]], [bytes[2..]])
+      got = []
+      containers.follow_logs('c') { |t| got << t }
+      assert_equal 'ção', got.join
+    end
+
     it 'follows tty logs without demuxing' do
       client.stubs(:get).with('/containers/c/json').returns('Config' => { 'Tty' => true })
       client.stubs(:stream_chunks).yields('plain')

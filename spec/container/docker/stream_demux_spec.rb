@@ -30,6 +30,31 @@ describe MKIt::Container::Docker::StreamDemux do
     assert_equal ['hello'], out
   end
 
+  it 'keeps a character split between two frames of the same stream whole' do
+    bytes = 'ã'.b
+    out = []
+    described_class.new.tap do |d|
+      d.feed(frame(1, bytes[0]) + frame(1, bytes[1])) { |t| out << t }
+    end
+    assert_equal ['ã'], out
+  end
+
+  it 'does not mix the pending bytes of stdout and stderr' do
+    out = []
+    d = described_class.new
+    d.feed(frame(1, 'ã'.b[0]) + frame(2, 'x') + frame(1, 'ã'.b[1])) { |t| out << t }
+    assert_equal %w[x ã], out
+  end
+
+  it 'yields what was held back when the stream ends' do
+    out = []
+    d = described_class.new
+    d.feed(frame(1, 'ã'.b[0])) { |t| out << t }
+    assert_empty out
+    d.flush { |t| out << t }
+    assert_equal ["\uFFFD"], out
+  end
+
   it 'decodes utf-8 payloads' do
     assert_equal 'olá', described_class.decode(frame(1, 'olá'))
   end

@@ -24,6 +24,21 @@ describe MKIt::ContainerExecCommand do
     reader.close
   end
 
+  it 'keeps the characters split between reads whole' do
+    reader, writer = IO.pipe
+    containers.stubs(:attach_exec).returns(reader)
+    thread = exec_command(varargs: ['cat']).register
+    bytes = 'ção'.b
+    writer.write(bytes[0, 2])
+    writer.flush
+    sleep 0.05
+    writer.write(bytes[2..])
+    writer.close
+    thread.join(1)
+    assert_equal 'ção', ws.sent.join
+    assert(ws.sent.all?(&:valid_encoding?))
+  end
+
   it 'relays websocket messages to the exec stdin' do
     socket = StringIO.new
     containers.stubs(:attach_exec).returns(socket)
