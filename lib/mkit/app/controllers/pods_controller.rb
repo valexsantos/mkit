@@ -3,7 +3,7 @@
 require 'mkit/app/model/pod'
 require 'mkit/app/helpers/pods_helper'
 require 'mkit/app/helpers/params_helper'
-require 'mkit/pods/docker_exec_command'
+require 'mkit/pods/container_exec_command'
 require 'mkit/exceptions'
 
 class PodsController < MKIt::Server
@@ -20,7 +20,7 @@ class PodsController < MKIt::Server
         listener = nil
         ws.onopen do
           settings.sockets << ws
-          listener = MKIt::DockerExecCommand.new(pod, ws, options: options_parameter)
+          listener = MKIt::ContainerExecCommand.new(pod, ws, options: options_parameter)
           settings.listeners << listener
           listener.register
         end

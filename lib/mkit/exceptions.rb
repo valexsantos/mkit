@@ -41,7 +41,5 @@ module MKIt
 
   class PoolExaustedException < StandardError; end
 
-  class CmdRunnerException < StandardError; end
-
 end
 

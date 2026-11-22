@@ -1,5 +1,5 @@
-require 'mkit/app/helpers/erb_helper'
-require 'mkit/app/helpers/docker_helper'
+require 'mkit/container/registry'
+require 'mkit/container/spec'
 require 'mkit/app/model/service'
 require 'mkit/status'
 
@@ -9,24 +9,30 @@ class Pod < ActiveRecord::Base
 
   before_destroy :clean_up
 
-  include MKIt::ERBHelper
-  include MKIt::DockerHelper
+  # Updates the pod ip (and its dns) from the container info, publishing pod_ip_updated (which
+  # refreshes the proxy config) when it changes. Does not wait.
+  #  - container gone (info nil): the ip is cleared, the pod leaves the proxy config
+  #  - container exists without ip in the service network (not started, stopped): the last ip is kept,
+  #    a stopped pod still counts; the next container event brings the new one
+  # The pod is saved before the job is published: the worker reads the ip from the database.
+  # notify: false leaves the job to the caller (it must publish it, e.g. once per service)
+  def sync_ip(info, notify: true)
+    return self.ip if info && info.ip_on(self.service.pods_network).nil?
 
-  def update_ip
-    new_ip = nil
-    tries = 5
-    while (new_ip.nil? && tries > 0) do
-      new_ip = self.instance.NetworkSettings.Networks[self.service.pods_network].IPAddress
-      sleep(1) if new_ip.nil?
-      tries = tries - 1
-    end
-    if self.ip != new_ip
-      self.ip = new_ip
-      self.update_dns
-      MkitJob.publish(topic: :pod_ip_updated, service_id: self.service.id, pod_id: self.id)
-    end
-    MKItLogger.info("docker ip updated [#{self.ip}]")
+    new_ip = info&.ip_on(self.service.pods_network)
+    return self.ip if new_ip == self.ip
+
+    self.ip = new_ip
+    self.save
+    new_ip.nil? ? self.clear_dns : self.update_dns
+    MkitJob.publish(topic: :pod_ip_updated, service_id: self.service.id, pod_id: self.id) if notify
+    MKItLogger.info("pod #{self.name} ip updated [#{self.ip.inspect}]")
     self.ip
+  end
+
+  # the dns server cannot answer with an empty address
+  def clear_dns
+    self.dns_host = nil
   end
 
   def update_dns
@@ -39,36 +45,45 @@ class Pod < ActiveRecord::Base
     self.dns_host.save
   end
 
-  def set_status_from_docker
-    if !self.instance.nil?
-      if instance.State.Running
-        self.status = MKIt::Status::RUNNING
-      else
-        self.status = MKIt::Status::STOPPED
-      end
-    else
-      self.status = MKIt::Status::PENDING
-    end
+  def set_status_from_container
+    info = container
+    self.status = if info.nil?
+                    MKIt::Status::PENDING
+                  elsif info.running?
+                    MKIt::Status::RUNNING
+                  else
+                    MKIt::Status::STOPPED
+                  end
     self.save
     self.status
   end
 
-  def parse
-    parse_model(MKIt::Templates::DOCKER_RUN).result(binding)
+  def container_spec
+    MKIt::Container::Spec.new(name: self.name, service: self.service)
   end
 
+  # Starts the container; recreates it when it does not exist (e.g. removed with `docker rm`).
   def start
-    start_instance(self.name) unless instance.State.Running
+    info = container
+    if info.nil?
+      MKItLogger.warn("pod #{self.name} has no container, creating it")
+      MkitJob.publish(topic: :create_pod_saga, data: { pod_name: self.name })
+    elsif !info.running?
+      containers.start(self.name)
+    end
   end
 
   def stop
-    stop_instance(self.name) unless self.instance.nil? || !self.instance.State.Running
+    containers.stop(self.name) if container&.running?
   end
 
-  def instance
-    properties = inspect_instance(self.name)
-    return properties.to_o unless properties.nil?
-    nil
+  # MKIt::Container::Info of the pod's container, nil when it does not exist
+  def container
+    containers.find(self.name)
+  end
+
+  def containers
+    MKIt::Container::Registry.api.containers
   end
 
   def clean_up

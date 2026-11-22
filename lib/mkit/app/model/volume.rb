@@ -1,5 +1,5 @@
 require 'mkit/ctypes'
-require 'mkit/app/helpers/docker_helper'
+require 'mkit/container/registry'
 require 'fileutils'
 
 class Volume < ActiveRecord::Base
@@ -33,7 +33,7 @@ class Volume < ActiveRecord::Base
   def create_volume
     case self.ctype
     when MKIt::CType::DOCKER_STORAGE
-      MKIt::DockerHelper.create_volume(self.name)
+      MKIt::Container::Registry.api.volumes.create(self.name)
     when MKIt::CType::LOCAL_STORAGE
       # nop
     end
@@ -42,7 +42,7 @@ class Volume < ActiveRecord::Base
   def delete_volume
     case self.ctype
     when MKIt::CType::DOCKER_STORAGE
-      MKIt::DockerHelper.delete_volume(self.name)
+      MKIt::Container::Registry.api.volumes.remove(self.name)
     end
   end
 

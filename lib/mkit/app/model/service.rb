@@ -5,7 +5,7 @@ require 'mkit/app/model/service_port'
 require 'mkit/app/model/service_config'
 require 'mkit/app/model/pod'
 require 'mkit/app/helpers/erb_helper'
-require 'mkit/app/helpers/docker_helper'
+require 'mkit/container/registry'
 require 'mkit/mkit_interface'
 require 'mkit/status'
 require 'mkit/utils'
@@ -32,7 +32,6 @@ class Service < ActiveRecord::Base
   validates :name, presence: true
 
   include MKIt::ERBHelper
-  include MKIt::DockerHelper
 
   def self.create(yaml)
     config = yaml["service"]
@@ -65,12 +64,8 @@ class Service < ActiveRecord::Base
       srv.status = MKIt::Status::CREATED
       srv.save!
       data = { service_id: srv.id, version: srv.version }
-      # create pod
-      (1..srv.resource.min_replicas).each { |i|
-        pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
-        srv.pod << pd
-        MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
-      }
+      # create pods
+      srv.spawn_pods(srv.resource.min_replicas)
       srv
     end
   end
@@ -116,18 +111,15 @@ class Service < ActiveRecord::Base
 
       # destroy old pods...
       self.pod.destroy_all
-      # create pod
-      (1..self.resource.min_replicas).each { |i|
-        pd = Pod.new( status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-','')[0..11])
-        self.pod << pd
-        MkitJob.publish(topic: :create_pod_saga, data: {pod_name: pd.name})
-      }
+      # create pods
+      self.spawn_pods(self.resource.min_replicas)
       self.save
     end
   end
 
   def create_pods_network
-    create_network(self.pods_network) unless network_exists?(self.pods_network)
+    networks = MKIt::Container::Registry.api.networks
+    networks.create(self.pods_network) unless networks.exists?(self.pods_network)
   end
 
   def deploy_network
@@ -166,7 +158,7 @@ class Service < ActiveRecord::Base
   def update_status!
     combined_status = nil
     self.pod.each { |pod|
-      child_status = pod.set_status_from_docker
+      child_status = pod.set_status_from_container
       if combined_status
         case combined_status
         when MKIt::Status::RUNNING
@@ -202,11 +194,25 @@ class Service < ActiveRecord::Base
     MkitJob.publish(topic: :update_proxy_config, application_id: self.id, data: proxy_config)
   end
 
+  # pods that can receive traffic: the ones with a known ip (a stopped pod keeps its last ip)
+  def proxy_pods
+    self.pod.reject { |p| p.ip.to_s.empty? }
+  end
+
+  # a proxy config only makes sense when there is a pod to route to
+  def routable?
+    proxy_pods.any?
+  end
+
+  def proxy_filename
+    my_addr = self.lease.ip.split('.')[3]
+    "#{'%04i' % my_addr.to_i}_#{self.name}.cfg"
+  end
+
   def proxy_config
     # config
     haproxy = parse
-    my_addr = self.lease.ip.split('.')[3]
-    filename = "#{'%04i' % my_addr.to_i}_#{self.name}.cfg"
+    filename = proxy_filename
     MKItLogger.debug("haproxy config file: #{filename}")
     {filename: filename, data: haproxy}
   end
@@ -216,9 +222,7 @@ class Service < ActiveRecord::Base
   end
 
   def clean_up
-    my_addr = self.lease.ip.split('.')[3]
-    filename = "#{'%04i' % my_addr.to_i}_#{self.name}.cfg"
-    MkitJob.publish(topic: :destroy_proxy_config, data: {filename: filename})
+    MkitJob.publish(topic: :destroy_proxy_config, data: {filename: proxy_filename})
   end
 
   def find_pod_by_id_or_name(pod_id)
@@ -229,10 +233,34 @@ class Service < ActiveRecord::Base
   #
   # ctrl
   #
+  # Starts the service, repairing it first: the pods missing to reach min_replicas are created and so is
+  # the network (both can be gone, e.g. after a `docker rm` / `docker network rm`). The pods that already
+  # exist are started; one without container is recreated by Pod#start.
   def start
-    self.pod.each { |p|
+    existing = self.pod.to_a
+    self.create_pods_network
+    self.spawn_pods(missing_pods)
+    existing.each { |p|
       MkitJob.publish(topic: :start_pod, service_id: self.id, pod_id: p.id)
     }
+  end
+
+  def min_replicas
+    self.resource&.min_replicas || 1
+  end
+
+  # pods needed to reach min_replicas
+  def missing_pods
+    [min_replicas - self.pod.size, 0].max
+  end
+
+  # Creates `count` pods and publishes the saga that creates (and starts) their containers.
+  def spawn_pods(count)
+    count.times do
+      pd = Pod.new(status: MKIt::Status::CREATED, name: SecureRandom.uuid.gsub('-', '')[0..11])
+      self.pod << pd
+      MkitJob.publish(topic: :create_pod_saga, data: { pod_name: pd.name })
+    end
   end
 
   def stop
@@ -245,7 +273,7 @@ class Service < ActiveRecord::Base
     out = ""
     self.pod.each { |p|
       out << "<<<< %s | %s >>>>\n" % [self.name, p.name]
-      out << logs(p.name)
+      out << MKIt::Container::Registry.api.containers.logs(p.name)
     }
     out
   end

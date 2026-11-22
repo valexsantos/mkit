@@ -16,7 +16,8 @@ require 'mkit/config/load_default_configs'
 require_relative 'mkit/version'
 require_relative 'mkit/mkit_interface'
 require_relative 'mkit/mkit_dns'
-require_relative 'mkit/pods/docker_listener'
+require 'mkit/container/registry'
+require_relative 'mkit/pods/container_listener'
 require 'mkit/app/helpers/haproxy'
 require 'mkit/app/controllers/services_controller'
 require 'mkit/app/controllers/mkitjobs_controller'
@@ -78,6 +79,7 @@ module MKIt
 
     # load configuration
     MKIt::Initializers.load_my_configuration
+    MKIt::Container::Registry.configure_from(MKIt::Config.mkit)
     # cert
     MKIt::EasySSL.create_self_certificate(@config_dir)
     #
@@ -177,8 +179,8 @@ module MKIt
         dns.run
       end
     end
-    System.register(:docker_listener, memoize: true) do
-      MKIt::DockerListener.new
+    System.register(:container_listener, memoize: true) do
+      MKIt::ContainerListener.new
     end
     # watchdog feature is to be re-evaluated
     # System.register(:watchdog, memoize: true) {
@@ -189,7 +191,7 @@ module MKIt
     WorkerManager.register_workers
     SagaManager.register_workers
     System[:job_manager].start
-    System[:docker_listener].start
+    System[:container_listener].start
     # watchdog feature is to be re-evaluated
     # System[:watchdog].start
     System[:mkit_dns].run

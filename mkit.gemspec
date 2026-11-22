@@ -41,5 +41,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'text-table', '~> 1.2', '>= 1.2.4'
   s.add_runtime_dependency 'faye-websocket', '= 0.11.3'
   s.add_runtime_dependency 'json_schemer', '~> 2.5', '>= 2.5.0'
+  s.add_development_dependency 'minitest', '~> 5.20'
+  s.add_development_dependency 'mocha', '~> 3.0'
   s.add_development_dependency 'rubocop', '~> 1.0'
 end
