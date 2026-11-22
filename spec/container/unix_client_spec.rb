@@ -45,6 +45,27 @@ describe MKIt::Container::Http::UnixClient do
     end
   end
 
+  it 'posts and returns the raw body without parsing it' do
+    with_daemon({ ['POST', '/exec/e/start'] => [200, "1\n"] }) do |sock, reqs|
+      assert_equal "1\n", described_class.new(socket: sock).post_raw('/exec/e/start', { 'Detach' => false })
+      assert_equal '{"Detach":false}', reqs.first[2]
+    end
+  end
+
+  it 'post_raw returns nil when not found and raises on errors' do
+    with_daemon({ ['POST', '/boom'] => [500, '{"message":"bad"}'] }) do |sock, _|
+      c = described_class.new(socket: sock)
+      assert_nil c.post_raw('/missing')
+      assert_raises(MKIt::Container::Error) { c.post_raw('/boom') }
+    end
+  end
+
+  it 'raises Container::Error on read timeouts' do
+    Net::HTTP.any_instance.stubs(:request).raises(Net::ReadTimeout)
+    err = assert_raises(MKIt::Container::Error) { described_class.new(socket: '/x.sock').get('/slow') }
+    assert_match(/timeout/, err.message)
+  end
+
   it 'streams newline delimited json split across chunks' do
     ev = %({"Type":"container","Action":"start"}\n{"Type":"network","Action":"connect"}\n)
     with_daemon({ ['GET', '/events'] => [200, ev] }) do |sock, _|

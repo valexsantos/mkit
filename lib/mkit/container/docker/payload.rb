@@ -24,7 +24,7 @@ module MKIt
           {
             'Binds' => @spec.binds,
             'NetworkMode' => @spec.network,
-            'Dns' => [@spec.dns]
+            'Dns' => [@spec.dns].compact
           }.merge(limits)
         end
 

@@ -24,6 +24,12 @@ describe MKIt::Container::Docker::Payload do
     assert_equal ['10.0.0.1'], h['HostConfig']['Dns']
   end
 
+  it 'sends no dns entry when the service has none' do
+    svc = OpenStruct.new(image: 'i', pods_network: 'n', my_dns: nil)
+    h = described_class.new(MKIt::Container::Spec.new(name: 'p', service: svc)).to_h
+    assert_empty h['HostConfig']['Dns']
+  end
+
   it 'omits Cmd when the service has no command' do
     refute payload(command: '').key?('Cmd')
   end

@@ -149,6 +149,11 @@ describe MKIt::ContainerListener do
       handle(event(:network, :disconnect, name: nil))
     end
 
+    it 'ignores network events without a container (create, destroy) without calling the runtime' do
+      containers.expects(:find).never
+      %i[create destroy].each { |action| handle(event(:network, action, id: nil, name: nil)) }
+    end
+
     it 'ignores containers that no longer exist' do
       containers.expects(:find).with('abc').returns(nil)
       Pod.expects(:find_by).never

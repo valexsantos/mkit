@@ -25,14 +25,29 @@ describe MKIt::Container::Docker::Containers do
 
     it 'pulls the image when create returns 404, then starts' do
       client.expects(:post).with('/containers/create', {}, { name: 'p1' }).twice.returns(nil).then.returns('Id' => 'abc')
-      client.expects(:post).with('/images/create', nil, { fromImage: 'repo:5000/img', tag: 'latest' })
+      client.expects(:post_raw).with('/images/create', nil, { fromImage: 'repo:5000/img', tag: 'latest' }, read_timeout: 600).returns('')
       client.expects(:post).with('/containers/abc/start')
       assert_equal 'abc', containers.run(spec)
     end
 
+    it 'reports an error sent inside the pull progress' do
+      client.stubs(:post).with('/containers/create', {}, instance_of(Hash)).returns(nil)
+      progress = %({"status":"Pulling from x"}\n{"error":"toomanyrequests: rate limit"}\n)
+      client.stubs(:post_raw).returns(progress)
+      err = assert_raises(MKIt::Container::Error) { containers.run(OpenStruct.new(name: 'p', image: 'nginx')) }
+      assert_match(/could not pull nginx: toomanyrequests: rate limit/, err.message)
+    end
+
+    it 'ignores progress lines that are not json' do
+      client.stubs(:post).with('/containers/create', {}, instance_of(Hash)).returns(nil).then.returns('Id' => 'x')
+      client.stubs(:post_raw).returns("not json\n{\"status\":\"done\"}\n")
+      client.stubs(:post).with('/containers/x/start')
+      assert_equal 'x', containers.run(OpenStruct.new(name: 'p', image: 'nginx'))
+    end
+
     it 'raises NotFound when the image cannot be pulled' do
       client.stubs(:post).with('/containers/create', {}, { name: 'p1' }).returns(nil)
-      client.stubs(:post).with('/images/create', nil, instance_of(Hash))
+      client.stubs(:post_raw).with('/images/create', nil, instance_of(Hash), read_timeout: 600).returns('')
       assert_raises(MKIt::Container::NotFound) { containers.run(spec) }
     end
 
@@ -42,7 +57,7 @@ describe MKIt::Container::Docker::Containers do
     }.each do |image, (from, tag)|
       it "splits image #{image}" do
         client.stubs(:post).with('/containers/create', {}, instance_of(Hash)).returns(nil).then.returns('Id' => 'x')
-        client.expects(:post).with('/images/create', nil, { fromImage: from, tag: tag }.compact)
+        client.expects(:post_raw).with('/images/create', nil, { fromImage: from, tag: tag }.compact, read_timeout: 600).returns('')
         client.stubs(:post).with('/containers/x/start')
         containers.run(OpenStruct.new(name: 'p', image: image))
       end
@@ -73,13 +88,26 @@ describe MKIt::Container::Docker::Containers do
     it 'runs the command and returns the output' do
       client.expects(:post).with('/containers/c/exec', has_entries('Cmd' => %w[ls -l], 'AttachStdin' => false))
             .returns('Id' => 'e1')
-      client.expects(:post).with('/exec/e1/start', 'Detach' => false, 'Tty' => true).returns("out\n")
+      client.expects(:post_raw).with('/exec/e1/start', { 'Detach' => false, 'Tty' => true }).returns("out\n")
       client.expects(:get).with('/exec/e1/json').returns('ExitCode' => 0)
       assert_equal "out\n", containers.exec('c', 'ls -l')
     end
 
+    it 'returns the output as is, even when it looks like json' do
+      client.stubs(:post).returns('Id' => 'e1')
+      client.stubs(:post_raw).returns("1\n")
+      client.stubs(:get).with('/exec/e1/json').returns('ExitCode' => 0)
+      assert_equal "1\n", containers.exec('c', 'echo 1')
+    end
+
+    it 'raises NotFound when the container does not exist' do
+      client.expects(:post).with('/containers/zz/exec', instance_of(Hash)).returns(nil)
+      assert_raises(MKIt::Container::NotFound) { containers.exec('zz', 'ls') }
+    end
+
     it 'raises ExecFailed on a non zero exit code' do
-      client.stubs(:post).returns({ 'Id' => 'e1' }, 'boom')
+      client.stubs(:post).returns('Id' => 'e1')
+      client.stubs(:post_raw).returns('boom')
       client.stubs(:get).with('/exec/e1/json').returns('ExitCode' => 2)
       err = assert_raises(MKIt::Container::ExecFailed) { containers.exec('c', 'false') }
       assert_match(/exited with 2/, err.message)
@@ -138,12 +166,27 @@ describe MKIt::Container::Docker::Containers do
       assert_equal :sock, containers.attach_exec('c', ['sh'])
     end
 
+    it 'raises NotFound when the container does not exist' do
+      client.expects(:post).with('/containers/zz/exec', instance_of(Hash)).returns(nil)
+      assert_raises(MKIt::Container::NotFound) { containers.attach_exec('zz', ['sh']) }
+    end
+
     it 'does not attach anything when detached' do
       client.expects(:post).with('/containers/c/exec',
                                  has_entries('AttachStdin' => false, 'AttachStdout' => false, 'Detach' => true))
             .returns('Id' => 'e1')
       client.stubs(:hijack).returns(:sock)
       containers.attach_exec('c', ['sleep', '1'], detached: true)
+    end
+  end
+
+  it 'runs a command through a real unix socket' do
+    routes = { ['POST', '/containers/c/exec'] => [201, '{"Id":"e1"}'],
+               ['POST', '/exec/e1/start'] => [200, "1\n"],
+               ['GET', '/exec/e1/json'] => [200, '{"ExitCode":0}'] }
+    with_daemon(routes) do |sock, _|
+      real = MKIt::Container::Docker::Containers.new(MKIt::Container::Http::UnixClient.new(socket: sock))
+      assert_equal "1\n", real.exec('c', 'echo 1')
     end
   end
 

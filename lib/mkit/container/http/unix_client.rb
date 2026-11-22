@@ -11,6 +11,8 @@ module MKIt
     module Http
       # Minimal JSON/HTTP client over a unix socket, as spoken by container runtimes.
       class UnixClient
+        DEFAULT_READ_TIMEOUT = 60
+
         attr_reader :socket
 
         def initialize(socket:)
@@ -32,11 +34,13 @@ module MKIt
 
         # Raw (non-JSON) response body, nil when not found.
         def get_raw(path, query = {})
-          res = connection.request(build(:get, path, query: query))
-          return nil if res.is_a?(Net::HTTPNotFound)
+          raw_request(:get, path, query: query)
+        end
 
-          raise_for(res) unless ok?(res)
-          res.body
+        # POST whose response is not JSON (exec output, image pull progress), nil when not found.
+        # Long operations (pulls) need a bigger read_timeout.
+        def post_raw(path, body = nil, query = {}, read_timeout: DEFAULT_READ_TIMEOUT)
+          raw_request(:post, path, body: body, query: query, read_timeout: read_timeout)
         end
 
         # Yields raw chunks as they arrive. Blocks until the connection closes.
@@ -80,7 +84,7 @@ module MKIt
 
         private
 
-        def connection(read_timeout: 60)
+        def connection(read_timeout: DEFAULT_READ_TIMEOUT)
           http = NetX::HTTPUnix.new("unix://#{@socket}")
           http.read_timeout = read_timeout
           http
@@ -97,13 +101,19 @@ module MKIt
         end
 
         def request(method, path, body: nil, query: {})
-          res = connection.request(build(method, path, body: body, query: query))
+          parse(raw_request(method, path, body: body, query: query))
+        end
+
+        def raw_request(method, path, body: nil, query: {}, read_timeout: DEFAULT_READ_TIMEOUT)
+          res = connection(read_timeout: read_timeout).request(build(method, path, body: body, query: query))
           return nil if res.is_a?(Net::HTTPNotFound)
 
           raise_for(res) unless ok?(res)
-          parse(res.body)
+          res.body
         rescue Errno::ENOENT, Errno::ECONNREFUSED, Errno::EACCES => e
           raise Error, "cannot reach socket #{@socket}: #{e.message}"
+        rescue Net::ReadTimeout, Net::OpenTimeout => e
+          raise Error, "timeout talking to #{@socket} (#{method.to_s.upcase} #{path}): #{e.message}"
         end
 
         # 304: already started/stopped

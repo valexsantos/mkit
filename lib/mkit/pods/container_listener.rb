@@ -106,17 +106,17 @@ module MKIt
       ''
     end
 
+    # only connect events of a container matter; network create/destroy carry no container
     def on_network_event(event)
+      return unless event.action == :connect && event.container_id
+
       info = @api.containers.find(event.container_id)
       return unknown_pod(event, event.container_id) if info.nil?
 
       pod = Pod.find_by(name: info.name)
       return unknown_pod(event, info.name) if pod.nil?
 
-      case event.action
-      when :connect then pod_connected(pod, event, info)
-      else MKItLogger.debug("\t#{event.kind} #{event.action} <<NOOP / TODO>>")
-      end
+      pod_connected(pod, event, info)
     end
 
     # connecting before the container starts yields no ip yet, the start event handles it
